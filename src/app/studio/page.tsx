@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { TRACKS, MOODS, Track } from "@/lib/catalog";
 import { formatPlays } from "@/lib/utils";
@@ -26,8 +26,137 @@ const LEADS = [
 
 type Tab = "assets" | "scout" | "analytics";
 
-/* ── BLANK TRACK TEMPLATE (unused but kept for type reference) ── */
-// const blankTrack = (): Omit<Track,"id"|"waveform"|"plays"|"licensed"> => ({ ... });
+interface ProcessingItem {
+  id: string;
+  name: string;
+  status: "processing" | "done" | "error";
+}
+
+/* ── AUDIO UTILS ── */
+async function audioDataFromFile(file: File): Promise<{ waveform: number[]; duration: string }> {
+  try {
+    const arrayBuffer = await file.arrayBuffer();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const AudioCtx = window.AudioContext ?? (window as any).webkitAudioContext;
+    const ctx = new AudioCtx() as AudioContext;
+    const audioBuffer = await ctx.decodeAudioData(arrayBuffer);
+
+    /* Downsample to 40 amplitude bars */
+    const channelData = audioBuffer.getChannelData(0);
+    const samples   = 40;
+    const blockSize = Math.floor(channelData.length / samples);
+    const waveform: number[] = [];
+    for (let i = 0; i < samples; i++) {
+      let sum = 0;
+      for (let j = 0; j < blockSize; j++) sum += Math.abs(channelData[i * blockSize + j]);
+      waveform.push(sum / blockSize);
+    }
+    const peak = Math.max(...waveform, 0.001);
+    const normalized = waveform.map((v) => v / peak);
+
+    const totalSec = Math.round(audioBuffer.duration);
+    await ctx.close();
+    return {
+      waveform: normalized,
+      duration: `${Math.floor(totalSec / 60)}:${String(totalSec % 60).padStart(2, "0")}`,
+    };
+  } catch {
+    return {
+      waveform: Array.from({ length: 40 }, () => Math.random() * 0.7 + 0.3),
+      duration: "0:00",
+    };
+  }
+}
+
+function titleFromFile(name: string) {
+  return name
+    .replace(/\.[^.]+$/, "")        // strip extension
+    .replace(/[-_]+/g, " ")          // dashes → spaces
+    .replace(/\b\w/g, (c) => c.toUpperCase()); // Title Case
+}
+
+/* ── DROP ZONE ── */
+function DropZone({ onFiles }: { onFiles: (files: File[]) => void }) {
+  const [dragActive, setDragActive] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const onDrag = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type === "dragenter" || e.type === "dragover") setDragActive(true);
+    if (e.type === "dragleave")  setDragActive(false);
+    if (e.type === "drop") {
+      setDragActive(false);
+      const files = Array.from(e.dataTransfer.files).filter(
+        (f) => f.type.startsWith("audio/") || /\.(mp3|wav|flac|aiff|aac|ogg|m4a)$/i.test(f.name)
+      );
+      if (files.length) onFiles(files);
+    }
+  };
+
+  const onInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []);
+    if (files.length) onFiles(files);
+    e.target.value = "";
+  };
+
+  return (
+    <motion.div
+      onDragEnter={onDrag} onDragOver={onDrag} onDragLeave={onDrag} onDrop={onDrag}
+      onClick={() => inputRef.current?.click()}
+      animate={{
+        borderColor: dragActive ? "#E04020"                : "rgba(255,255,255,0.08)",
+        background:  dragActive ? "rgba(224,64,32,0.06)"  : "rgba(255,255,255,0.01)",
+      }}
+      transition={{ duration: 0.15 }}
+      className="relative border-2 border-dashed flex flex-col items-center justify-center gap-5 py-14 cursor-pointer mb-10 select-none"
+    >
+      <input ref={inputRef} type="file" multiple
+        accept="audio/*,.mp3,.wav,.flac,.aiff,.aac,.ogg,.m4a"
+        onChange={onInput} className="hidden" />
+
+      {/* Arrow icon */}
+      <motion.div animate={{ y: dragActive ? -6 : 0 }} transition={{ duration: 0.2 }}>
+        <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
+          <motion.path
+            d="M18 26V10M10 18L18 10L26 18"
+            stroke={dragActive ? "#E04020" : "rgba(255,255,255,0.2)"}
+            strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"
+            animate={{ stroke: dragActive ? "#E04020" : "rgba(255,255,255,0.2)" }}
+          />
+          <motion.path
+            d="M7 29H29"
+            stroke={dragActive ? "#E04020" : "rgba(255,255,255,0.1)"}
+            strokeWidth="1.5" strokeLinecap="round"
+            animate={{ stroke: dragActive ? "#E04020" : "rgba(255,255,255,0.1)" }}
+          />
+        </svg>
+      </motion.div>
+
+      <div className="text-center">
+        <p className="text-sm font-bold uppercase tracking-[0.25em]"
+          style={{ color: dragActive ? "#E04020" : "rgba(255,255,255,0.35)", fontFamily: "var(--font-barlow)" }}>
+          {dragActive ? "Release to upload" : "Drop your audio files here"}
+        </p>
+        <p className="text-[10px] uppercase tracking-[0.15em] text-white/20 mt-1.5"
+          style={{ fontFamily: "var(--font-barlow)" }}>
+          MP3 · WAV · FLAC · AIFF · multiple files at once
+        </p>
+      </div>
+
+      <AnimatePresence>
+        {!dragActive && (
+          <motion.span
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="text-[10px] uppercase tracking-[0.25em] border border-white/10 px-4 py-2 text-white/30 hover:text-white/60 hover:border-white/20 transition-colors"
+            style={{ fontFamily: "var(--font-barlow)" }}>
+            or browse files
+          </motion.span>
+        )}
+      </AnimatePresence>
+    </motion.div>
+  );
+}
 
 /* ── TRACK FORM ── */
 function TrackForm({
@@ -77,7 +206,7 @@ function TrackForm({
               <input
                 type={field.type}
                 value={form[field.key as keyof typeof form]}
-                placeholder={field.placeholder}
+                placeholder={(field as { placeholder?: string }).placeholder}
                 onChange={f(field.key)}
                 className="w-full px-3 py-2.5 text-sm text-white outline-none focus:ring-1 focus:ring-white/20"
                 style={{ background: "rgba(255,255,255,0.07)", fontFamily: "var(--font-barlow)" }}
@@ -105,7 +234,7 @@ function TrackForm({
               title:    form.title,
               mood:     form.mood as Track["mood"],
               duration: form.duration,
-              bpm:      parseInt(form.bpm) || 80,
+              bpm:      parseInt(form.bpm) || 0,
               key:      form.key,
             })}
             className="flex-1 py-3 text-sm font-bold uppercase tracking-[0.2em]"
@@ -156,37 +285,27 @@ function LoginGate({ onAuth }: { onAuth: () => void }) {
             <div>
               <label className="text-[10px] uppercase tracking-[0.2em] text-white/30 block mb-1.5"
                 style={{ fontFamily: "var(--font-barlow)" }}>Email</label>
-              <input
-                type="email"
-                value={email}
+              <input type="email" value={email}
                 onChange={(e) => { setEmail(e.target.value); setError(false); }}
                 onKeyDown={(e) => e.key === "Enter" && submit()}
                 className="w-full px-3 py-3 text-sm text-white outline-none focus:ring-1 focus:ring-white/20"
-                style={{ background: "rgba(255,255,255,0.06)", fontFamily: "var(--font-barlow)" }}
-              />
+                style={{ background: "rgba(255,255,255,0.06)", fontFamily: "var(--font-barlow)" }} />
             </div>
             <div>
               <label className="text-[10px] uppercase tracking-[0.2em] text-white/30 block mb-1.5"
                 style={{ fontFamily: "var(--font-barlow)" }}>Password</label>
-              <input
-                type="password"
-                value={password}
+              <input type="password" value={password}
                 onChange={(e) => { setPassword(e.target.value); setError(false); }}
                 onKeyDown={(e) => e.key === "Enter" && submit()}
                 className="w-full px-3 py-3 text-sm text-white outline-none focus:ring-1 focus:ring-white/20"
-                style={{ background: "rgba(255,255,255,0.06)", fontFamily: "var(--font-barlow)" }}
-              />
+                style={{ background: "rgba(255,255,255,0.06)", fontFamily: "var(--font-barlow)" }} />
             </div>
           </div>
 
           <AnimatePresence>
             {error && (
-              <motion.p
-                initial={{ opacity: 0, y: -4 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0 }}
-                className="text-xs text-red-400 mb-4"
-                style={{ fontFamily: "var(--font-barlow)" }}>
+              <motion.p initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+                className="text-xs text-red-400 mb-4" style={{ fontFamily: "var(--font-barlow)" }}>
                 Invalid credentials
               </motion.p>
             )}
@@ -211,31 +330,26 @@ export default function StudioPage() {
   const [leadStatuses, setLeadStatuses] = useState<Record<string, string>>(
     Object.fromEntries(LEADS.map((l) => [l.id, l.status]))
   );
-  const [tracks, setTracks]             = useState<Track[]>(() => {
-    if (typeof window === "undefined") return TRACKS;
-    try {
-      const saved = localStorage.getItem("studio_tracks");
-      return saved ? JSON.parse(saved) : TRACKS;
-    } catch { return TRACKS; }
-  });
+  const [tracks, setTracks]             = useState<Track[]>(TRACKS);
   const [editingTrack, setEditingTrack] = useState<Track | null>(null);
   const [addingTrack, setAddingTrack]   = useState(false);
+  const [processing, setProcessing]     = useState<ProcessingItem[]>([]);
 
-  /* Check auth on mount */
+  /* Auth + localStorage hydration */
   useEffect(() => {
     setAuthed(localStorage.getItem(AUTH_KEY) === "1");
-    const saved = localStorage.getItem("studio_tracks");
-    if (saved) {
-      try { setTracks(JSON.parse(saved)); } catch { /* */ }
-    }
+    try {
+      const saved = localStorage.getItem("studio_tracks");
+      if (saved) setTracks(JSON.parse(saved));
+    } catch { /* */ }
   }, []);
 
   /* Persist tracks */
   useEffect(() => {
-    if (typeof window !== "undefined") {
+    if (typeof window !== "undefined" && authed) {
       localStorage.setItem("studio_tracks", JSON.stringify(tracks));
     }
-  }, [tracks]);
+  }, [tracks, authed]);
 
   const ANALYTICS = tracks.map((t) => ({
     ...t,
@@ -248,7 +362,7 @@ export default function StudioPage() {
   const totalPlays    = tracks.reduce((s, t) => s + t.plays, 0);
   const totalLicenses = tracks.reduce((s, t) => s + t.licensed, 0);
 
-  /* Helpers */
+  /* Track CRUD */
   const saveTrack = (data: Partial<Track>) => {
     if (editingTrack) {
       setTracks(tracks.map((t) => t.id === editingTrack.id ? { ...t, ...data } : t));
@@ -256,26 +370,72 @@ export default function StudioPage() {
     }
   };
 
-  const addTrack = (data: Partial<Track>) => {
+  const addTrackManual = (data: Partial<Track>) => {
     const newTrack: Track = {
       id:          `t${Date.now()}`,
       title:       data.title       || "Untitled",
       mood:        data.mood        || "Desert Mysticism",
       duration:    data.duration    || "0:00",
-      bpm:         data.bpm         || 80,
-      key:         data.key         || "Am",
-      description: data.description || "",
-      tags:        data.tags        || [],
+      bpm:         data.bpm         || 0,
+      key:         data.key         || "",
+      description: "",
+      tags:        [],
       plays:       0,
       licensed:    0,
       waveform:    Array.from({ length: 40 }, () => Math.random() * 0.8 + 0.2),
     };
-    setTracks([...tracks, newTrack]);
+    setTracks((prev) => [...prev, newTrack]);
     setAddingTrack(false);
   };
 
   const deleteTrack = (id: string) => {
     if (confirm("Delete this track?")) setTracks(tracks.filter((t) => t.id !== id));
+  };
+
+  /* ── Drop processing ── */
+  const processFiles = async (files: File[]) => {
+    /* Create a processing entry for every file immediately */
+    const items: ProcessingItem[] = files.map((f) => ({
+      id:     `proc-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      name:   f.name,
+      status: "processing" as const,
+    }));
+    setProcessing((prev) => [...prev, ...items]);
+
+    /* Process files in parallel */
+    await Promise.all(
+      files.map(async (file, i) => {
+        const item = items[i];
+        try {
+          const { waveform, duration } = await audioDataFromFile(file);
+          const newTrack: Track = {
+            id:          `t${Date.now()}-${i}`,
+            title:       titleFromFile(file.name),
+            mood:        "Desert Mysticism",
+            duration,
+            bpm:         0,
+            key:         "",
+            description: "",
+            tags:        [],
+            plays:       0,
+            licensed:    0,
+            waveform,
+          };
+          setTracks((prev) => [...prev, newTrack]);
+          setProcessing((prev) =>
+            prev.map((p) => p.id === item.id ? { ...p, status: "done" } : p)
+          );
+        } catch {
+          setProcessing((prev) =>
+            prev.map((p) => p.id === item.id ? { ...p, status: "error" } : p)
+          );
+        }
+        /* Fade out after 2.5 s */
+        setTimeout(() => {
+          setProcessing((prev) => prev.filter((p) => p.id !== item.id));
+        }, 2500);
+      })
+    );
   };
 
   /* Loading / auth states */
@@ -285,20 +445,13 @@ export default function StudioPage() {
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-white">
 
-      {/* Track form modals */}
+      {/* Modals */}
       <AnimatePresence>
         {editingTrack && (
-          <TrackForm
-            initial={editingTrack}
-            onSave={saveTrack}
-            onCancel={() => setEditingTrack(null)}
-          />
+          <TrackForm initial={editingTrack} onSave={saveTrack} onCancel={() => setEditingTrack(null)} />
         )}
         {addingTrack && (
-          <TrackForm
-            onSave={addTrack}
-            onCancel={() => setAddingTrack(false)}
-          />
+          <TrackForm onSave={addTrackManual} onCancel={() => setAddingTrack(false)} />
         )}
       </AnimatePresence>
 
@@ -319,8 +472,7 @@ export default function StudioPage() {
                   <motion.div layoutId="studio-tab"
                     className="absolute bottom-0 left-0 right-0 h-0.5"
                     style={{ background: "#E04020" }}
-                    transition={{ type: "spring", stiffness: 400, damping: 30 }}
-                  />
+                    transition={{ type: "spring", stiffness: 400, damping: 30 }} />
                 )}
               </button>
             ))}
@@ -339,9 +491,7 @@ export default function StudioPage() {
         <div className="flex items-end justify-between overflow-hidden">
           <AnimatePresence mode="wait">
             <motion.h1 key={`left-${tab}`}
-              initial={{ opacity: 0, y: 40 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -30 }}
+              initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -30 }}
               transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
               className="display font-black text-white"
               style={{ fontFamily: "var(--font-barlow-condensed)", fontSize: "clamp(60px,12vw,160px)", lineHeight: 1 }}>
@@ -350,9 +500,7 @@ export default function StudioPage() {
           </AnimatePresence>
           <AnimatePresence mode="wait">
             <motion.h1 key={`right-${tab}`}
-              initial={{ opacity: 0, y: 40 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -30 }}
+              initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -30 }}
               transition={{ duration: 0.35, delay: 0.04, ease: [0.22, 1, 0.36, 1] }}
               className="display font-black text-white"
               style={{ fontFamily: "var(--font-barlow-condensed)", fontSize: "clamp(60px,12vw,160px)", lineHeight: 1 }}>
@@ -366,9 +514,9 @@ export default function StudioPage() {
       {/* Summary stats */}
       <div className="max-w-screen-xl mx-auto px-10 lg:px-16 py-10 flex items-center gap-12 border-b border-white/5 flex-wrap">
         {[
-          { v: tracks.length,            l: "Tracks" },
-          { v: formatPlays(totalPlays),  l: "Total Plays" },
-          { v: totalLicenses,            l: "Licensed" },
+          { v: tracks.length,           l: "Tracks" },
+          { v: formatPlays(totalPlays), l: "Total Plays" },
+          { v: totalLicenses,           l: "Licensed" },
           { v: LEADS.filter((l) => leadStatuses[l.id] !== "replied").length, l: "Active Leads" },
         ].map((s) => (
           <div key={s.l}>
@@ -384,25 +532,86 @@ export default function StudioPage() {
           {/* ── ASSETS ── */}
           {tab === "assets" && (
             <motion.div key="assets"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
+              initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}
               transition={{ duration: 0.3, ease: "easeOut" }}>
 
-              <div className="flex items-center justify-between mb-10">
+              {/* Drop zone */}
+              <DropZone onFiles={processFiles} />
+
+              {/* Processing queue */}
+              <AnimatePresence>
+                {processing.length > 0 && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: "auto" }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="mb-8 overflow-hidden">
+                    <p className="text-[10px] uppercase tracking-[0.25em] text-white/30 mb-3"
+                      style={{ fontFamily: "var(--font-barlow)" }}>
+                      Processing {processing.length} file{processing.length > 1 ? "s" : ""}
+                    </p>
+                    <div className="space-y-1">
+                      <AnimatePresence>
+                        {processing.map((item) => (
+                          <motion.div key={item.id}
+                            initial={{ opacity: 0, x: -12 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            exit={{ opacity: 0, x: 12, height: 0, marginBottom: 0, paddingTop: 0, paddingBottom: 0 }}
+                            transition={{ duration: 0.25 }}
+                            className="flex items-center gap-4 px-4 py-3"
+                            style={{ background: "rgba(255,255,255,0.03)" }}>
+
+                            {/* Status icon */}
+                            {item.status === "processing" && (
+                              <motion.div
+                                animate={{ rotate: 360 }}
+                                transition={{ duration: 0.9, repeat: Infinity, ease: "linear" }}
+                                className="w-4 h-4 rounded-full shrink-0"
+                                style={{ border: "1.5px solid rgba(255,255,255,0.15)", borderTopColor: "rgba(255,255,255,0.7)" }}
+                              />
+                            )}
+                            {item.status === "done" && (
+                              <motion.div
+                                initial={{ scale: 0 }} animate={{ scale: 1 }}
+                                className="w-4 h-4 flex items-center justify-center text-xs shrink-0"
+                                style={{ color: "#4ade80" }}>✓</motion.div>
+                            )}
+                            {item.status === "error" && (
+                              <div className="w-4 h-4 flex items-center justify-center text-xs shrink-0"
+                                style={{ color: "#f87171" }}>✗</div>
+                            )}
+
+                            <p className="text-xs text-white/50 truncate flex-1"
+                              style={{ fontFamily: "var(--font-barlow)" }}>{item.name}</p>
+
+                            <p className="text-[10px] uppercase tracking-[0.15em] shrink-0"
+                              style={{
+                                fontFamily: "var(--font-barlow)",
+                                color: item.status === "done" ? "#4ade80" : item.status === "error" ? "#f87171" : "rgba(255,255,255,0.3)",
+                              }}>
+                              {item.status === "processing" ? "Analysing waveform…" : item.status === "done" ? "Added" : "Error — skipped"}
+                            </p>
+                          </motion.div>
+                        ))}
+                      </AnimatePresence>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              {/* Header row */}
+              <div className="flex items-center justify-between mb-6">
                 <p className="text-xs uppercase tracking-[0.25em] text-white/40"
                   style={{ fontFamily: "var(--font-barlow)" }}>
                   {tracks.length} tracks
                 </p>
-                <motion.button
-                  onClick={() => setAddingTrack(true)}
-                  whileHover={{ scale: 1.03 }}
-                  whileTap={{ scale: 0.97 }}
+                <motion.button onClick={() => setAddingTrack(true)}
+                  whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
                   className="text-[10px] uppercase tracking-[0.2em] font-bold px-5 py-2.5 flex items-center gap-2"
-                  style={{ background: "#E04020", color: "#fff", fontFamily: "var(--font-barlow)" }}>
-                  Add Track
-                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                    <path d="M6 1V11M1 6H11" stroke="white" strokeWidth="1.5" strokeLinecap="round"/>
+                  style={{ background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.5)", fontFamily: "var(--font-barlow)" }}>
+                  Add manually
+                  <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                    <path d="M5 1V9M1 5H9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
                   </svg>
                 </motion.button>
               </div>
@@ -413,7 +622,7 @@ export default function StudioPage() {
                   <motion.div key={track.id}
                     initial={{ opacity: 0, x: -16 }}
                     animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: i * 0.04, duration: 0.35, ease: "easeOut" }}
+                    transition={{ delay: Math.min(i * 0.04, 0.4), duration: 0.35, ease: "easeOut" }}
                     className="flex items-center gap-6 py-5 border-t border-white/5 hover:bg-white/[0.02] transition-colors group px-2">
 
                     <span className="text-xs text-white/20 w-6 shrink-0 text-right"
@@ -442,20 +651,20 @@ export default function StudioPage() {
                     <div className="flex items-center gap-8 text-xs text-white/30 shrink-0"
                       style={{ fontFamily: "var(--font-barlow)" }}>
                       <span>{track.duration}</span>
-                      <span className="font-semibold text-white/60">{track.bpm} BPM</span>
-                      <span>{track.key}</span>
+                      {track.bpm > 0 && <span className="font-semibold text-white/60">{track.bpm} BPM</span>}
+                      {track.key && <span>{track.key}</span>}
                       <span>{formatPlays(track.plays)} plays</span>
                       <span style={{ color: "#4ade80" }}>{track.licensed}×</span>
                     </div>
 
                     <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
                       <button onClick={() => setEditingTrack(track)}
-                        className="px-3 py-1.5 text-[10px] uppercase tracking-wider transition-colors hover:bg-white/10"
+                        className="px-3 py-1.5 text-[10px] uppercase tracking-wider hover:bg-white/10 transition-colors"
                         style={{ background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.5)", fontFamily: "var(--font-barlow)" }}>
                         Edit
                       </button>
                       <button onClick={() => deleteTrack(track.id)}
-                        className="px-3 py-1.5 text-[10px] uppercase tracking-wider transition-colors hover:bg-red-900/30"
+                        className="px-3 py-1.5 text-[10px] uppercase tracking-wider hover:bg-red-900/30 transition-colors"
                         style={{ background: "rgba(255,255,255,0.06)", color: "rgba(255,100,80,0.6)", fontFamily: "var(--font-barlow)" }}>
                         Delete
                       </button>
@@ -470,17 +679,14 @@ export default function StudioPage() {
           {/* ── AI SCOUT ── */}
           {tab === "scout" && (
             <motion.div key="scout"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
+              initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}
               transition={{ duration: 0.3, ease: "easeOut" }}>
 
               <div className="flex items-center justify-between mb-10">
-                <p className="text-xs uppercase tracking-[0.25em] text-white/40"
-                  style={{ fontFamily: "var(--font-barlow)" }}>
+                <p className="text-xs uppercase tracking-[0.25em] text-white/40" style={{ fontFamily: "var(--font-barlow)" }}>
                   {LEADS.length} active leads
                 </p>
-                <button className="text-[10px] uppercase tracking-[0.2em] font-bold px-5 py-2.5 flex items-center gap-2"
+                <button className="text-[10px] uppercase tracking-[0.2em] font-bold px-5 py-2.5"
                   style={{ background: "#E04020", color: "#fff", fontFamily: "var(--font-barlow)" }}>
                   Scan Projects
                 </button>
@@ -492,17 +698,14 @@ export default function StudioPage() {
                   const status = leadStatuses[lead.id];
                   return (
                     <motion.div key={lead.id}
-                      initial={{ opacity: 0, y: 16 }}
-                      animate={{ opacity: 1, y: 0 }}
+                      initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: i * 0.07, duration: 0.35 }}
                       style={{ background: "rgba(255,255,255,0.03)" }}>
 
                       <div className="flex items-center gap-5 px-6 py-5 cursor-pointer hover:bg-white/[0.02] transition-colors"
                         onClick={() => setExpandedLead(isExpanded ? null : lead.id)}>
                         <div className="display w-12 h-12 flex items-center justify-center font-black text-sm shrink-0"
-                          style={{ background: "#E04020", fontFamily: "var(--font-barlow-condensed)" }}>
-                          {lead.score}
-                        </div>
+                          style={{ background: "#E04020", fontFamily: "var(--font-barlow-condensed)" }}>{lead.score}</div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-baseline gap-2 flex-wrap">
                             <span className="font-bold text-sm text-white" style={{ fontFamily: "var(--font-barlow)" }}>{lead.director}</span>
@@ -516,8 +719,8 @@ export default function StudioPage() {
                         <span className="text-[10px] uppercase tracking-[0.15em] font-bold px-3 py-1 shrink-0"
                           style={{
                             fontFamily: "var(--font-barlow)",
-                            background:  status === "replied" ? "rgba(74,222,128,0.1)"  : status === "sent" ? "rgba(96,165,250,0.1)"  : "rgba(224,64,32,0.15)",
-                            color:       status === "replied" ? "#4ade80"               : status === "sent" ? "#60a5fa"               : "#E04020",
+                            background: status === "replied" ? "rgba(74,222,128,0.1)" : status === "sent" ? "rgba(96,165,250,0.1)" : "rgba(224,64,32,0.15)",
+                            color:      status === "replied" ? "#4ade80"              : status === "sent" ? "#60a5fa"              : "#E04020",
                           }}>
                           {status === "replied" ? "Replied" : status === "sent" ? "Sent" : "Draft"}
                         </span>
@@ -527,36 +730,25 @@ export default function StudioPage() {
                       <AnimatePresence>
                         {isExpanded && (
                           <motion.div
-                            initial={{ height: 0, opacity: 0 }}
-                            animate={{ height: "auto", opacity: 1 }}
-                            exit={{ height: 0, opacity: 0 }}
-                            transition={{ duration: 0.25 }}
+                            initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.25 }}
                             className="overflow-hidden">
                             <div className="px-6 pb-6 pt-4 border-t border-white/5">
-                              <p className="text-[10px] uppercase tracking-[0.2em] text-white/30 mb-3"
-                                style={{ fontFamily: "var(--font-barlow)" }}>Generated Email</p>
+                              <p className="text-[10px] uppercase tracking-[0.2em] text-white/30 mb-3" style={{ fontFamily: "var(--font-barlow)" }}>Generated Email</p>
                               <pre className="text-sm text-white/50 whitespace-pre-wrap leading-relaxed p-5 mb-5 font-sans"
-                                style={{ background: "rgba(255,255,255,0.03)" }}>
-                                {lead.email}
-                              </pre>
+                                style={{ background: "rgba(255,255,255,0.03)" }}>{lead.email}</pre>
                               <div className="flex gap-3">
                                 {status === "draft" && <>
                                   <button onClick={() => setLeadStatuses({ ...leadStatuses, [lead.id]: "sent" })}
                                     className="text-[10px] uppercase tracking-[0.2em] font-bold px-5 py-2.5"
-                                    style={{ background: "#E04020", color: "#fff", fontFamily: "var(--font-barlow)" }}>
-                                    Send Email
-                                  </button>
-                                  <button className="text-[10px] uppercase tracking-[0.2em] font-semibold px-5 py-2.5 text-white/40 hover:text-white transition-colors"
-                                    style={{ background: "rgba(255,255,255,0.06)", fontFamily: "var(--font-barlow)" }}>
-                                    Edit Draft
-                                  </button>
+                                    style={{ background: "#E04020", color: "#fff", fontFamily: "var(--font-barlow)" }}>Send Email</button>
+                                  <button className="text-[10px] uppercase tracking-[0.2em] px-5 py-2.5 text-white/40 hover:text-white transition-colors"
+                                    style={{ background: "rgba(255,255,255,0.06)", fontFamily: "var(--font-barlow)" }}>Edit Draft</button>
                                 </>}
                                 {status === "sent" && (
                                   <button onClick={() => setLeadStatuses({ ...leadStatuses, [lead.id]: "replied" })}
-                                    className="text-[10px] uppercase tracking-[0.2em] font-semibold px-5 py-2.5 text-white/40 hover:text-white transition-colors"
-                                    style={{ background: "rgba(255,255,255,0.06)", fontFamily: "var(--font-barlow)" }}>
-                                    Mark Replied
-                                  </button>
+                                    className="text-[10px] uppercase tracking-[0.2em] px-5 py-2.5 text-white/40 hover:text-white transition-colors"
+                                    style={{ background: "rgba(255,255,255,0.06)", fontFamily: "var(--font-barlow)" }}>Mark Replied</button>
                                 )}
                                 {status === "replied" && (
                                   <p className="text-sm py-2" style={{ color: "#4ade80", fontFamily: "var(--font-barlow)" }}>
@@ -578,29 +770,20 @@ export default function StudioPage() {
           {/* ── ANALYTICS ── */}
           {tab === "analytics" && (
             <motion.div key="analytics"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
+              initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}
               transition={{ duration: 0.3, ease: "easeOut" }}>
 
-              {/* Top 3 */}
               <div className="grid grid-cols-3 gap-4 mb-14">
                 {[...ANALYTICS].sort((a, b) => b.weekPlays - a.weekPlays).slice(0, 3).map((t, i) => (
                   <motion.div key={t.id}
-                    initial={{ opacity: 0, y: 24 }}
-                    animate={{ opacity: 1, y: 0 }}
+                    initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: i * 0.08, duration: 0.4 }}
                     className="p-7" style={{ background: "rgba(255,255,255,0.03)" }}>
-                    <p className="text-[10px] uppercase tracking-[0.2em] text-white/30 mb-4"
-                      style={{ fontFamily: "var(--font-barlow)" }}>No. {i + 1} This Week</p>
-                    <p className="display text-2xl font-black text-white mb-1"
-                      style={{ fontFamily: "var(--font-barlow-condensed)" }}>{t.title}</p>
-                    <p className="text-[10px] uppercase tracking-wider text-white/30 mb-5"
-                      style={{ fontFamily: "var(--font-barlow)" }}>{t.mood}</p>
-                    <div className="display text-6xl font-black"
-                      style={{ fontFamily: "var(--font-barlow-condensed)", color: "#E04020" }}>{t.weekPlays}</div>
-                    <div className="text-[10px] uppercase tracking-wider text-white/30 mt-1 mb-4"
-                      style={{ fontFamily: "var(--font-barlow)" }}>plays</div>
+                    <p className="text-[10px] uppercase tracking-[0.2em] text-white/30 mb-4" style={{ fontFamily: "var(--font-barlow)" }}>No. {i + 1} This Week</p>
+                    <p className="display text-2xl font-black text-white mb-1" style={{ fontFamily: "var(--font-barlow-condensed)" }}>{t.title}</p>
+                    <p className="text-[10px] uppercase tracking-wider text-white/30 mb-5" style={{ fontFamily: "var(--font-barlow)" }}>{t.mood}</p>
+                    <div className="display text-6xl font-black" style={{ fontFamily: "var(--font-barlow-condensed)", color: "#E04020" }}>{t.weekPlays}</div>
+                    <div className="text-[10px] uppercase tracking-wider text-white/30 mt-1 mb-4" style={{ fontFamily: "var(--font-barlow)" }}>plays</div>
                     <div className="flex flex-wrap gap-1">
                       {t.locations.map((loc) => (
                         <span key={loc} className="text-[10px] uppercase tracking-wider px-2 py-0.5 text-white/30"
@@ -611,7 +794,6 @@ export default function StudioPage() {
                 ))}
               </div>
 
-              {/* Table */}
               <table className="w-full" style={{ borderCollapse: "collapse" }}>
                 <thead>
                   <tr className="border-b border-white/5">
@@ -624,20 +806,13 @@ export default function StudioPage() {
                 <tbody>
                   {ANALYTICS.map((t, i) => (
                     <motion.tr key={t.id}
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      transition={{ delay: i * 0.03 }}
+                      initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.03 }}
                       className="border-b border-white/[0.04] hover:bg-white/[0.02] transition-colors">
-                      <td className="py-4 px-4 text-sm font-bold uppercase text-white"
-                        style={{ fontFamily: "var(--font-barlow-condensed)" }}>{t.title}</td>
-                      <td className="py-4 px-4 text-[10px] uppercase tracking-wider text-white/40"
-                        style={{ fontFamily: "var(--font-barlow)" }}>{t.mood}</td>
-                      <td className="py-4 px-4 text-sm text-white/60"
-                        style={{ fontFamily: "var(--font-barlow)" }}>{formatPlays(t.plays)}</td>
-                      <td className="py-4 px-4 text-sm font-bold text-white"
-                        style={{ fontFamily: "var(--font-barlow)" }}>{t.weekPlays}</td>
-                      <td className="py-4 px-4 text-sm text-white/40"
-                        style={{ fontFamily: "var(--font-barlow)" }}>{t.avgDuration}</td>
+                      <td className="py-4 px-4 text-sm font-bold uppercase text-white" style={{ fontFamily: "var(--font-barlow-condensed)" }}>{t.title}</td>
+                      <td className="py-4 px-4 text-[10px] uppercase tracking-wider text-white/40" style={{ fontFamily: "var(--font-barlow)" }}>{t.mood}</td>
+                      <td className="py-4 px-4 text-sm text-white/60" style={{ fontFamily: "var(--font-barlow)" }}>{formatPlays(t.plays)}</td>
+                      <td className="py-4 px-4 text-sm font-bold text-white" style={{ fontFamily: "var(--font-barlow)" }}>{t.weekPlays}</td>
+                      <td className="py-4 px-4 text-sm text-white/40" style={{ fontFamily: "var(--font-barlow)" }}>{t.avgDuration}</td>
                       <td className="py-4 px-4 text-sm font-bold" style={{ color: "#4ade80", fontFamily: "var(--font-barlow)" }}>{t.licensed}</td>
                       <td className="py-4 px-4 text-sm font-bold"
                         style={{ color: t.trend === "up" ? "#4ade80" : "rgba(255,255,255,0.2)", fontFamily: "var(--font-barlow)" }}>
