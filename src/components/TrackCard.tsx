@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
+import { motion } from "framer-motion";
 import { Track, MOODS } from "@/lib/catalog";
 import { formatPlays } from "@/lib/utils";
 import Waveform from "./Waveform";
@@ -34,15 +35,18 @@ export default function TrackCard({ track, onLicense, onRequest }: TrackCardProp
   };
 
   return (
-    <div
+    <motion.div
       className="group cursor-pointer"
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
+      whileHover={{ y: -4 }}
+      transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
     >
       {/* Visual block — waveform as "image" */}
-      <div
-        className="relative w-full aspect-[4/3] flex flex-col justify-end p-6 overflow-hidden transition-all duration-300"
-        style={{ background: hovered ? "#1a1a1a" : "#111" }}
+      <motion.div
+        className="relative w-full aspect-[4/3] flex flex-col justify-end p-6 overflow-hidden"
+        animate={{ background: hovered ? "#1a1a1a" : "#111" }}
+        transition={{ duration: 0.2 }}
       >
         {/* BPM + Key top-right */}
         <div className="absolute top-5 right-5 text-right">
@@ -81,7 +85,7 @@ export default function TrackCard({ track, onLicense, onRequest }: TrackCardProp
         <p className="text-[10px] uppercase tracking-[0.2em] text-white/30 mt-3" style={{ fontFamily: "var(--font-barlow)" }}>
           {track.duration}
         </p>
-      </div>
+      </motion.div>
 
       {/* Info block below image */}
       <div className="pt-4 pb-6">
@@ -95,16 +99,19 @@ export default function TrackCard({ track, onLicense, onRequest }: TrackCardProp
             </h3>
           </div>
           {/* Orange arrow button */}
-          <button
+          <motion.button
             onClick={() => onLicense?.(track)}
-            className="w-9 h-9 rounded-full flex items-center justify-center shrink-0 transition-all duration-200 hover:scale-110"
+            className="w-9 h-9 rounded-full flex items-center justify-center shrink-0"
             style={{ background: "#E04020" }}
+            whileHover={{ scale: 1.15 }}
+            whileTap={{ scale: 0.92 }}
+            transition={{ duration: 0.15 }}
             aria-label="License track"
           >
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
               <path d="M2.5 11.5L11.5 2.5M11.5 2.5H5M11.5 2.5V9" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
-          </button>
+          </motion.button>
         </div>
 
         {/* Category + plays row */}
@@ -127,14 +134,16 @@ export default function TrackCard({ track, onLicense, onRequest }: TrackCardProp
         </div>
 
         {/* Request custom */}
-        <button
+        <motion.button
           onClick={() => onRequest?.(track)}
-          className="mt-3 text-[10px] uppercase tracking-[0.2em] text-white/25 hover:text-white/60 transition-colors"
+          className="mt-3 text-[10px] uppercase tracking-[0.2em] text-white/25"
           style={{ fontFamily: "var(--font-barlow)" }}
+          whileHover={{ color: "rgba(255,255,255,0.6)" }}
+          transition={{ duration: 0.15 }}
         >
           Request custom
-        </button>
+        </motion.button>
       </div>
-    </div>
+    </motion.div>
   );
 }
