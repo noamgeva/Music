@@ -8,29 +8,21 @@ interface WaveformProps {
   height?: number;
 }
 
-export default function Waveform({
-  data,
-  color = "#0a0a0a",
-  isPlaying = false,
-  progress = 0,
-  height = 40,
-}: WaveformProps) {
+export default function Waveform({ data, color = "#111", isPlaying = false, progress = 0, height = 36 }: WaveformProps) {
   const filled = Math.round(data.length * progress);
-
   return (
     <div className="flex items-center gap-[2px] w-full" style={{ height }}>
       {data.map((amp, i) => {
-        const barH = Math.max(2, amp * height);
+        const h = Math.max(2, amp * height);
         const isPast = i < filled;
         const isActive = isPlaying && Math.abs(i - filled) < 3;
         return (
           <div
             key={i}
-            className={`flex-1 rounded-sm ${isActive ? "waveform-bar-active" : ""}`}
+            className={`flex-1 rounded-full ${isActive ? "waveform-bar-active" : ""}`}
             style={{
-              height: barH,
-              background: isPast ? color : "#e0e0e0",
-              opacity: isActive ? 1 : isPast ? 0.85 : 1,
+              height: h,
+              background: isPast ? color : "#e8e8e8",
               transition: "background 0.1s",
             }}
           />

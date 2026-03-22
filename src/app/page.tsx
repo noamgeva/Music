@@ -16,313 +16,219 @@ export default function HomePage() {
   const [licenseTrack, setLicenseTrack] = useState<Track | null>(null);
   const [section, setSection] = useState<Section>("catalog");
 
-  const filteredTracks = selectedMood
-    ? TRACKS.filter((t) => t.mood === selectedMood)
-    : TRACKS;
+  const filteredTracks = selectedMood ? TRACKS.filter((t) => t.mood === selectedMood) : TRACKS;
 
   return (
-    <div className="min-h-screen bg-white text-black">
+    <div className="min-h-screen bg-white text-black overflow-x-hidden">
       <LicenseModal track={licenseTrack} onClose={() => setLicenseTrack(null)} />
 
-      {/* ── NAV ── */}
-      <nav
-        className="fixed top-0 left-0 right-0 z-40 bg-white border-b border-zinc-200 flex items-stretch h-12"
-        style={{ fontFamily: "var(--font-inter)" }}
-      >
-        <div className="px-8 flex items-center border-r border-zinc-200 shrink-0">
-          <span className="text-sm font-bold tracking-tight">Noam Geva</span>
+      {/* ── NAV ── white, centered links */}
+      <nav className="fixed top-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-sm">
+        <div className="max-w-screen-xl mx-auto px-10 h-16 flex items-center justify-between">
+          <Link href="/" className="text-xs font-semibold tracking-[0.25em] uppercase" style={{ fontFamily: "var(--font-barlow)" }}>
+            Noam Geva
+          </Link>
+          <div className="hidden md:flex items-center gap-10">
+            {[
+              { label: "Catalog",     fn: () => setSection("catalog") },
+              { label: "Visual Sync", fn: () => setSection("sync") },
+              { label: "Bespoke",     fn: () => setSection("bespoke") },
+            ].map((item) => (
+              <button key={item.label} onClick={item.fn}
+                className="text-xs tracking-[0.2em] uppercase font-medium text-zinc-500 hover:text-black transition-colors"
+                style={{ fontFamily: "var(--font-barlow)" }}>
+                {item.label}
+              </button>
+            ))}
+            <Link href="/bio" className="text-xs tracking-[0.2em] uppercase font-medium text-zinc-500 hover:text-black transition-colors"
+              style={{ fontFamily: "var(--font-barlow)" }}>
+              About
+            </Link>
+          </div>
+          <Link href="/studio"
+            className="text-xs tracking-[0.2em] uppercase font-semibold text-zinc-400 hover:text-black transition-colors"
+            style={{ fontFamily: "var(--font-barlow)" }}>
+            Studio
+          </Link>
+        </div>
+      </nav>
+
+      {/* ── HERO ── white background, massive bold type */}
+      <section className="relative min-h-screen flex flex-col justify-center pt-16 bg-white">
+        {/* Left vertical label */}
+        <div className="absolute left-5 bottom-20 hidden lg:flex flex-col items-center gap-3">
+          <div className="w-px h-10 bg-zinc-300" />
+          <span className="vertical-text text-[9px] tracking-[0.3em] uppercase text-zinc-400" style={{ fontFamily: "var(--font-barlow)" }}>
+            © Noam Geva
+          </span>
+        </div>
+        {/* Right vertical label */}
+        <div className="absolute right-5 bottom-20 hidden lg:flex flex-col items-center gap-3">
+          <span className="vertical-text text-[9px] tracking-[0.3em] uppercase text-zinc-400" style={{ fontFamily: "var(--font-barlow)" }}>
+            Film Music
+          </span>
+          <div className="w-px h-10 bg-zinc-300" />
         </div>
 
-        <div className="flex flex-1 items-stretch">
+        <div className="max-w-screen-xl mx-auto px-10 lg:px-20 w-full">
+          <p className="text-[10px] tracking-[0.4em] uppercase text-zinc-400 mb-8" style={{ fontFamily: "var(--font-barlow)" }}>
+            Cinematic Music for Independent Film
+          </p>
+
+          {/* Giant headline — mixed weights */}
+          <h1 className="display leading-none select-none" style={{ fontFamily: "var(--font-barlow-condensed)" }}>
+            <div className="text-[20vw] font-black" style={{ lineHeight: 0.85 }}>
+              FILM
+            </div>
+            <div className="flex items-baseline" style={{ fontSize: "13vw", lineHeight: 0.85 }}>
+              <span className="font-black">&amp;&nbsp;SONIC</span>
+            </div>
+            <div className="font-thin" style={{ fontSize: "17vw", lineHeight: 0.85 }}>
+              SCORE
+            </div>
+            <div className="font-black" style={{ fontSize: "20vw", lineHeight: 0.85 }}>
+              MUSIC
+            </div>
+          </h1>
+
+          {/* Bottom row */}
+          <div className="mt-10 flex items-end justify-between flex-wrap gap-6">
+            <div className="flex gap-5 flex-wrap">
+              <button onClick={() => setSection("catalog")}
+                className="text-xs tracking-[0.2em] uppercase font-bold border-b-2 border-black pb-0.5 hover:text-zinc-500 hover:border-zinc-400 transition-all"
+                style={{ fontFamily: "var(--font-barlow)" }}>
+                Explore Catalog
+              </button>
+              <button onClick={() => setSection("bespoke")}
+                className="text-xs tracking-[0.2em] uppercase font-medium border-b border-zinc-300 pb-0.5 text-zinc-400 hover:text-black hover:border-black transition-all"
+                style={{ fontFamily: "var(--font-barlow)" }}>
+                Commission Score
+              </button>
+            </div>
+            <p className="text-xs font-light text-zinc-500 text-right uppercase tracking-wider leading-snug"
+              style={{ fontFamily: "var(--font-barlow)" }}>
+              Atmospheric music<br />for independent film
+            </p>
+          </div>
+        </div>
+
+        {/* Down arrow */}
+        <div className="flex justify-center mt-16 mb-8">
+          <svg width="18" height="26" viewBox="0 0 18 26" fill="none" className="opacity-25">
+            <path d="M9 0V22M1 15L9 23L17 15" stroke="black" strokeWidth="1.5" strokeLinecap="round"/>
+          </svg>
+        </div>
+      </section>
+
+      {/* ── CATALOG / SYNC / BESPOKE — dark section ── */}
+      <section className="bg-[#0a0a0a] text-white">
+
+        {/* Split mega-header */}
+        <div className="max-w-screen-xl mx-auto px-10 lg:px-16 pt-20 pb-0">
+          <div className="flex items-end justify-between">
+            <h2 className="display font-black text-white" style={{ fontFamily: "var(--font-barlow-condensed)", fontSize: "clamp(60px, 12vw, 160px)", lineHeight: 1 }}>
+              {section === "catalog" ? "THE" : section === "sync" ? "VISUAL" : "BESPOKE"}
+            </h2>
+            <h2 className="display font-black text-white" style={{ fontFamily: "var(--font-barlow-condensed)", fontSize: "clamp(60px, 12vw, 160px)", lineHeight: 1 }}>
+              {section === "catalog" ? "CATALOG" : section === "sync" ? "SYNC" : "SCORE"}
+            </h2>
+          </div>
+
+          {/* Divider */}
+          <div className="w-full h-px bg-white/10 mt-4 mb-0" />
+        </div>
+
+        {/* Section nav */}
+        <div className="max-w-screen-xl mx-auto px-10 lg:px-16 flex items-center gap-8 h-14 border-b border-white/8">
           {(["catalog", "sync", "bespoke"] as Section[]).map((s) => (
-            <button
-              key={s}
-              onClick={() => setSection(s)}
-              className={`px-6 text-[10px] uppercase tracking-[0.25em] font-semibold border-r border-zinc-200 transition-colors ${
-                section === s ? "bg-black text-white" : "hover:bg-zinc-50 text-zinc-500"
-              }`}
-            >
+            <button key={s} onClick={() => setSection(s)}
+              className="text-[10px] uppercase tracking-[0.25em] font-semibold h-full border-b-2 flex items-center transition-colors"
+              style={{
+                fontFamily: "var(--font-barlow)",
+                borderColor: section === s ? "#E04020" : "transparent",
+                color: section === s ? "#fff" : "rgba(255,255,255,0.3)",
+              }}>
               {s === "catalog" ? "Catalog" : s === "sync" ? "Visual Sync" : "Bespoke"}
             </button>
           ))}
         </div>
 
-        <Link
-          href="/bio"
-          className="px-6 flex items-center border-l border-zinc-200 text-[10px] uppercase tracking-[0.25em] font-semibold text-zinc-400 hover:bg-black hover:text-white transition-colors"
-        >
-          Bio
-        </Link>
-        <Link
-          href="/studio"
-          className="px-6 flex items-center border-l border-zinc-200 text-[10px] uppercase tracking-[0.25em] font-semibold text-zinc-400 hover:bg-black hover:text-white transition-colors"
-        >
-          Studio
-        </Link>
-      </nav>
+        {/* Content */}
+        <div className="max-w-screen-xl mx-auto px-10 lg:px-16 py-16">
 
-      {/* ── HERO ── */}
-      <header className="pt-12 border-b border-zinc-200">
-
-        {/* Ticker */}
-        <div className="border-b border-zinc-200 py-2.5 overflow-hidden">
-          <div className="marquee-inner">
-            {Array(6).fill("Film Music — Licensing — Original Scoring — Tel Aviv — ").map((t, i) => (
-              <span
-                key={i}
-                className="text-[10px] uppercase tracking-[0.3em] text-zinc-400 mr-12"
-                style={{ fontFamily: "var(--font-inter)" }}
-              >
-                {t}
-              </span>
-            ))}
-          </div>
-        </div>
-
-        {/* Hero grid */}
-        <div className="grid lg:grid-cols-2 divide-y lg:divide-y-0 lg:divide-x divide-zinc-200">
-
-          {/* Left — Headline */}
-          <div className="px-8 py-16 lg:py-24 flex flex-col justify-between min-h-[380px]">
-            <div>
-              <p
-                className="text-[10px] uppercase tracking-[0.35em] text-zinc-400 mb-10"
-                style={{ fontFamily: "var(--font-inter)" }}
-              >
-                Cinematic Music for Independent Film
-              </p>
-              <h1
-                className="text-[80px] lg:text-[104px] font-bold leading-[0.88] italic tracking-tight"
-                style={{ fontFamily: "var(--font-playfair)" }}
-              >
-                Sound<br />
-                <span className="font-light not-italic">that</span><br />
-                lives.
-              </h1>
-            </div>
-            <div className="flex gap-3 mt-10 flex-wrap" style={{ fontFamily: "var(--font-inter)" }}>
-              <button
-                onClick={() => setSection("catalog")}
-                className="px-6 py-3 bg-black text-white text-[10px] uppercase tracking-[0.25em] font-semibold hover:bg-zinc-900 transition-colors"
-              >
-                Explore Catalog
-              </button>
-              <button
-                onClick={() => setSection("bespoke")}
-                className="px-6 py-3 border border-zinc-300 hover:border-black text-[10px] uppercase tracking-[0.25em] font-semibold text-zinc-600 hover:text-black transition-colors"
-              >
-                Commission Score
-              </button>
-            </div>
-          </div>
-
-          {/* Right — Stats + intro */}
-          <div className="flex flex-col divide-y divide-zinc-200">
-            <div className="grid grid-cols-2 divide-x divide-zinc-200">
-              {[
-                { value: "12",  label: "Catalog Tracks" },
-                { value: "89",  label: "Licenses Issued" },
-                { value: "6",   label: "Sonic Moods" },
-                { value: "24h", label: "Response Time" },
-              ].map((s, i) => (
-                <div key={s.label} className={`px-8 py-8 ${i < 2 ? "border-b border-zinc-200" : ""}`}>
-                  <div
-                    className="text-5xl font-bold italic mb-1 leading-none"
-                    style={{ fontFamily: "var(--font-playfair)" }}
-                  >
-                    {s.value}
-                  </div>
-                  <div
-                    className="text-[10px] uppercase tracking-[0.25em] text-zinc-400 mt-2"
-                    style={{ fontFamily: "var(--font-inter)" }}
-                  >
-                    {s.label}
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <div className="px-8 py-8 flex-1 flex flex-col justify-between">
-              <p className="text-sm text-zinc-500 leading-relaxed max-w-xs">
-                Atmospheric, world-influenced compositions for directors who treat silence as a canvas.
-                License instantly or commission something entirely your own.
-              </p>
-              <div className="mt-6 flex flex-wrap gap-2" style={{ fontFamily: "var(--font-inter)" }}>
-                {MOODS.map((m) => (
-                  <button
-                    key={m.name}
-                    onClick={() => { setSelectedMood(m.name); setSection("catalog"); }}
-                    className="text-[10px] uppercase tracking-wider px-3 py-1.5 border border-zinc-200 hover:border-black text-zinc-500 hover:text-black transition-colors"
-                  >
-                    {m.name}
-                  </button>
-                ))}
+          {/* CATALOG */}
+          {section === "catalog" && (
+            <>
+              <div className="mb-12">
+                <MoodSelector selected={selectedMood} onSelect={setSelectedMood} dark />
               </div>
-            </div>
-          </div>
-        </div>
-      </header>
-
-      {/* ── MAIN ── */}
-      <main>
-
-        {/* Catalog */}
-        {section === "catalog" && (
-          <>
-            <MoodSelector selected={selectedMood} onSelect={setSelectedMood} />
-
-            <div
-              className="px-8 py-4 border-b border-zinc-100 flex items-center justify-between"
-              style={{ fontFamily: "var(--font-inter)" }}
-            >
-              <div>
-                <span className="text-sm font-semibold">
-                  {selectedMood ?? "All Tracks"}
-                </span>
-                <span className="text-xs text-zinc-400 ml-3">
-                  {filteredTracks.length} available
-                </span>
-              </div>
-              {selectedMood && (
-                <button
-                  onClick={() => setSelectedMood(null)}
-                  className="text-[10px] uppercase tracking-[0.2em] text-zinc-400 hover:text-black transition-colors"
-                >
-                  Clear
-                </button>
-              )}
-            </div>
-
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 border-b border-zinc-200">
-              {filteredTracks.map((track, i) => (
-                <div
-                  key={track.id}
-                  className={`border-zinc-200 ${
-                    i % 3 < 2 ? "border-r" : ""
-                  } border-b`}
-                >
+              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-4">
+                {filteredTracks.map((track) => (
                   <TrackCard
+                    key={track.id}
                     track={track}
                     onLicense={setLicenseTrack}
                     onRequest={() => setSection("bespoke")}
                   />
-                </div>
-              ))}
+                ))}
+              </div>
+            </>
+          )}
+
+          {/* VISUAL SYNC */}
+          {section === "sync" && (
+            <div>
+              <p className="text-sm text-white/40 mb-12 max-w-md" style={{ fontFamily: "var(--font-barlow)" }}>
+                Upload a silent cut of your scene and audition tracks against it in real time before licensing.
+              </p>
+              <VisualSyncPreview />
             </div>
-          </>
-        )}
+          )}
 
-        {/* Visual Sync */}
-        {section === "sync" && <VisualSyncPreview />}
-
-        {/* Bespoke */}
-        {section === "bespoke" && (
-          <div>
-            <div
-              className="px-8 py-4 border-b border-zinc-200 flex items-center justify-between"
-              style={{ fontFamily: "var(--font-inter)" }}
-            >
-              <span className="text-[10px] uppercase tracking-[0.25em] text-zinc-400">Bespoke Scoring</span>
-              <span className="text-xs text-zinc-400">Commission an original score</span>
-            </div>
-
-            <div className="grid lg:grid-cols-2 divide-y lg:divide-y-0 lg:divide-x divide-zinc-200">
-              <div className="px-8 py-16">
-                <h2
-                  className="text-[72px] font-bold leading-[0.9] italic"
-                  style={{ fontFamily: "var(--font-playfair)" }}
-                >
-                  Every<br />
-                  <span className="font-light not-italic">film has</span><br />
-                  a soul.
-                </h2>
-                <p className="text-sm text-zinc-500 leading-relaxed mt-8 max-w-xs">
-                  Describe your vision and Noam will craft a score made only for your project —
-                  from a single cue to a full soundtrack.
+          {/* BESPOKE */}
+          {section === "bespoke" && (
+            <div className="grid lg:grid-cols-2 gap-20">
+              <div>
+                <h3 className="display font-black text-white mb-8 leading-none"
+                  style={{ fontFamily: "var(--font-barlow-condensed)", fontSize: "clamp(48px, 7vw, 96px)" }}>
+                  EVERY<br />
+                  <span className="font-thin">FILM HAS</span><br />
+                  A SOUL.
+                </h3>
+                <p className="text-sm text-white/50 leading-relaxed max-w-xs" style={{ fontFamily: "var(--font-barlow)" }}>
+                  Describe your project and Noam will craft a score built only for your film — from a single cue to a full soundtrack.
                 </p>
               </div>
-              <div className="px-8 py-16">
-                <BespokeForm />
+              <BespokeForm dark />
+            </div>
+          )}
+        </div>
+
+        {/* Stats footer */}
+        <div className="border-t border-white/8 max-w-screen-xl mx-auto px-10 lg:px-16 py-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-8">
+          <div className="flex gap-12 flex-wrap">
+            {[
+              { v: "12", l: "Tracks in catalog" },
+              { v: "89", l: "Licenses issued" },
+              { v: "6",  l: "Sonic moods" },
+            ].map((s) => (
+              <div key={s.l}>
+                <div className="display text-5xl font-black text-white" style={{ fontFamily: "var(--font-barlow-condensed)" }}>{s.v}</div>
+                <div className="text-[10px] uppercase tracking-[0.2em] text-white/30 mt-1" style={{ fontFamily: "var(--font-barlow)" }}>{s.l}</div>
               </div>
-            </div>
+            ))}
           </div>
-        )}
-      </main>
-
-      {/* ── THREE COLUMNS ── */}
-      <div
-        className="grid grid-cols-3 divide-x divide-zinc-200 border-t border-b border-zinc-200"
-        style={{ fontFamily: "var(--font-inter)" }}
-      >
-        {[
-          {
-            label: "World-Influenced",
-            body: "Oud, frame drum, and instruments that carry memory. Music rooted in place and time.",
-          },
-          {
-            label: "Cinema First",
-            body: "Every track is composed with picture in mind. Built for sync, scoring, and silence.",
-          },
-          {
-            label: "Fast Licensing",
-            body: "License in minutes. Custom scoring in 48 hours. Direct line to the composer.",
-          },
-        ].map((item) => (
-          <div key={item.label} className="px-8 py-10">
-            <p className="text-[10px] uppercase tracking-[0.3em] text-zinc-400 mb-4">{item.label}</p>
-            <p className="text-sm text-zinc-600 leading-relaxed">{item.body}</p>
-          </div>
-        ))}
-      </div>
-
-      {/* ── FOOTER ── */}
-      <footer
-        className="border-t border-zinc-200"
-        style={{ fontFamily: "var(--font-inter)" }}
-      >
-        <div className="grid grid-cols-2 lg:grid-cols-4 divide-x divide-zinc-200 border-b border-zinc-200">
-          <div className="px-8 py-10 lg:col-span-2">
-            <h2
-              className="text-3xl font-bold italic mb-2"
-              style={{ fontFamily: "var(--font-playfair)" }}
-            >
-              Noam Geva
-            </h2>
-            <p className="text-xs text-zinc-400">Composer. Film Music. Tel Aviv.</p>
-          </div>
-          <div className="px-8 py-10">
-            <p className="text-[10px] uppercase tracking-[0.3em] text-zinc-400 mb-4">Navigate</p>
-            <div className="space-y-2">
-              {(["catalog", "sync", "bespoke"] as Section[]).map((s) => (
-                <button
-                  key={s}
-                  onClick={() => setSection(s)}
-                  className="block text-sm text-zinc-600 hover:text-black transition-colors text-left capitalize"
-                >
-                  {s === "sync" ? "Visual Sync" : s.charAt(0).toUpperCase() + s.slice(1)}
-                </button>
-              ))}
-              <Link href="/bio" className="block text-sm text-zinc-600 hover:text-black transition-colors">
-                Bio
-              </Link>
-              <Link href="/studio" className="block text-sm text-zinc-600 hover:text-black transition-colors">
-                Studio
-              </Link>
-            </div>
-          </div>
-          <div className="px-8 py-10">
-            <p className="text-[10px] uppercase tracking-[0.3em] text-zinc-400 mb-4">Contact</p>
-            <p className="text-sm text-zinc-600">noam@noamgeva.com</p>
-            <p className="text-xs text-zinc-400 mt-1 leading-relaxed">Licensing enquiries welcome</p>
+          <div className="flex gap-8 text-[10px] uppercase tracking-[0.2em] text-white/30 flex-wrap" style={{ fontFamily: "var(--font-barlow)" }}>
+            {(["catalog", "sync", "bespoke"] as Section[]).map((s) => (
+              <button key={s} onClick={() => setSection(s)} className="hover:text-white transition-colors">
+                {s === "sync" ? "Visual Sync" : s.charAt(0).toUpperCase() + s.slice(1)}
+              </button>
+            ))}
+            <Link href="/bio" className="hover:text-white transition-colors">About</Link>
+            <Link href="/studio" className="hover:text-white transition-colors">Studio</Link>
           </div>
         </div>
-        <div className="px-8 py-4 flex items-center justify-between">
-          <p className="text-[10px] text-zinc-400">
-            &copy; {new Date().getFullYear()} Noam Geva. All rights reserved.
-          </p>
-          <p className="text-[10px] text-zinc-300">noamgeva.com</p>
-        </div>
-      </footer>
+      </section>
     </div>
   );
 }

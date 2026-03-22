@@ -14,10 +14,11 @@ interface TrackCardProps {
 export default function TrackCard({ track, onLicense, onRequest }: TrackCardProps) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [hovered, setHovered] = useState(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const mood = MOODS.find((m) => m.name === track.mood);
 
-  const togglePlay = () => {
+  const togglePlay = (e: React.MouseEvent) => {
+    e.stopPropagation();
     if (isPlaying) {
       setIsPlaying(false);
       if (intervalRef.current) clearInterval(intervalRef.current);
@@ -25,11 +26,7 @@ export default function TrackCard({ track, onLicense, onRequest }: TrackCardProp
       setIsPlaying(true);
       intervalRef.current = setInterval(() => {
         setProgress((p) => {
-          if (p >= 1) {
-            setIsPlaying(false);
-            if (intervalRef.current) clearInterval(intervalRef.current);
-            return 0;
-          }
+          if (p >= 1) { setIsPlaying(false); if (intervalRef.current) clearInterval(intervalRef.current); return 0; }
           return p + 0.003;
         });
       }, 50);
@@ -37,94 +34,105 @@ export default function TrackCard({ track, onLicense, onRequest }: TrackCardProp
   };
 
   return (
-    <div className="flex flex-col h-full bg-white hover:bg-zinc-50 transition-colors duration-200">
-      {/* Mood + duration */}
-      <div className="flex items-center justify-between px-6 pt-6 pb-3">
-        <span
-          className="text-[10px] uppercase tracking-[0.25em] text-zinc-400 font-medium"
-          style={{ fontFamily: "var(--font-inter)" }}
-        >
-          {mood?.name}
-        </span>
-        <span className="text-[11px] text-zinc-300" style={{ fontFamily: "var(--font-inter)" }}>
-          {track.duration}
-        </span>
-      </div>
+    <div
+      className="group cursor-pointer"
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+    >
+      {/* Visual block — waveform as "image" */}
+      <div
+        className="relative w-full aspect-[4/3] flex flex-col justify-end p-6 overflow-hidden transition-all duration-300"
+        style={{ background: hovered ? "#1a1a1a" : "#111" }}
+      >
+        {/* BPM + Key top-right */}
+        <div className="absolute top-5 right-5 text-right">
+          <p className="text-[10px] uppercase tracking-[0.2em] text-white/30" style={{ fontFamily: "var(--font-barlow)" }}>
+            {track.bpm} BPM
+          </p>
+          <p className="text-[10px] uppercase tracking-[0.2em] text-white/30" style={{ fontFamily: "var(--font-barlow)" }}>
+            {track.key}
+          </p>
+        </div>
 
-      {/* Title */}
-      <div className="px-6 pb-4">
-        <h3
-          className="text-[26px] font-bold leading-tight italic"
-          style={{ fontFamily: "var(--font-playfair)" }}
-        >
-          {track.title}
-        </h3>
-        <p className="text-xs text-zinc-400 mt-2 leading-relaxed line-clamp-2">
-          {track.description}
-        </p>
-      </div>
-
-      {/* Waveform */}
-      <div className="px-6 py-3 flex items-center gap-3">
+        {/* Play button top-left */}
         <button
           onClick={togglePlay}
-          className="w-8 h-8 border border-zinc-300 hover:border-black flex items-center justify-center shrink-0 transition-colors"
+          className="absolute top-5 left-5 w-9 h-9 rounded-full flex items-center justify-center transition-all duration-200"
+          style={{ background: isPlaying ? "#E04020" : "rgba(255,255,255,0.1)" }}
           aria-label={isPlaying ? "Pause" : "Play"}
         >
           {isPlaying ? (
-            <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor">
-              <rect x="1" y="0" width="3" height="10" />
-              <rect x="6" y="0" width="3" height="10" />
+            <svg width="9" height="9" viewBox="0 0 9 9" fill="white">
+              <rect x="0" y="0" width="3" height="9"/><rect x="6" y="0" width="3" height="9"/>
             </svg>
           ) : (
-            <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor" style={{ marginLeft: 1 }}>
-              <path d="M1 0L10 5L1 10V0Z" />
+            <svg width="9" height="9" viewBox="0 0 9 9" fill="white" style={{ marginLeft: 1 }}>
+              <path d="M0 0L9 4.5L0 9Z"/>
             </svg>
           )}
         </button>
-        <div className="flex-1">
-          <Waveform data={track.waveform} color="#111" isPlaying={isPlaying} progress={progress} height={28} />
+
+        {/* Waveform */}
+        <div className="w-full">
+          <Waveform data={track.waveform} color="#E04020" isPlaying={isPlaying} progress={progress} height={56} />
         </div>
+
+        {/* Duration */}
+        <p className="text-[10px] uppercase tracking-[0.2em] text-white/30 mt-3" style={{ fontFamily: "var(--font-barlow)" }}>
+          {track.duration}
+        </p>
       </div>
 
-      {/* Meta */}
-      <div
-        className="px-6 py-3 flex items-center gap-5 text-[11px] text-zinc-400 border-t border-zinc-100"
-        style={{ fontFamily: "var(--font-inter)" }}
-      >
-        <span className="text-black font-semibold">{track.bpm} BPM</span>
-        <span>{track.key}</span>
-        <span className="ml-auto">{formatPlays(track.plays)} plays</span>
-      </div>
-
-      {/* Tags */}
-      <div className="px-6 py-3 flex flex-wrap gap-1.5">
-        {track.tags.slice(0, 4).map((tag) => (
-          <span
-            key={tag}
-            className="text-[10px] uppercase tracking-wider text-zinc-400 border border-zinc-200 px-2 py-0.5"
-            style={{ fontFamily: "var(--font-inter)" }}
+      {/* Info block below image */}
+      <div className="pt-4 pb-6">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex-1 min-w-0">
+            <h3
+              className="text-base font-semibold text-white leading-snug mb-1 group-hover:text-white/80 transition-colors"
+              style={{ fontFamily: "var(--font-barlow)" }}
+            >
+              {track.title}
+            </h3>
+          </div>
+          {/* Orange arrow button */}
+          <button
+            onClick={() => onLicense?.(track)}
+            className="w-9 h-9 rounded-full flex items-center justify-center shrink-0 transition-all duration-200 hover:scale-110"
+            style={{ background: "#E04020" }}
+            aria-label="License track"
           >
-            {tag}
-          </span>
-        ))}
-      </div>
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <path d="M2.5 11.5L11.5 2.5M11.5 2.5H5M11.5 2.5V9" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </button>
+        </div>
 
-      {/* Actions */}
-      <div className="mt-auto flex border-t border-zinc-200">
-        <button
-          onClick={() => onLicense?.(track)}
-          className="flex-1 py-3.5 text-[10px] uppercase tracking-[0.25em] font-bold bg-black text-white hover:bg-zinc-900 transition-colors"
-          style={{ fontFamily: "var(--font-inter)" }}
-        >
-          License
-        </button>
+        {/* Category + plays row */}
+        <div className="flex items-center justify-between mt-1">
+          <div className="w-full h-px bg-white/10 mb-3" />
+        </div>
+        <div className="flex items-center justify-between">
+          <span
+            className="text-xs text-white/40 uppercase tracking-[0.15em]"
+            style={{ fontFamily: "var(--font-barlow)" }}
+          >
+            {track.mood}
+          </span>
+          <span
+            className="text-xs text-white/30 uppercase tracking-[0.15em]"
+            style={{ fontFamily: "var(--font-barlow)" }}
+          >
+            {formatPlays(track.plays)} plays
+          </span>
+        </div>
+
+        {/* Request custom */}
         <button
           onClick={() => onRequest?.(track)}
-          className="flex-1 py-3.5 text-[10px] uppercase tracking-[0.25em] font-medium text-zinc-500 hover:text-black border-l border-zinc-200 transition-colors"
-          style={{ fontFamily: "var(--font-inter)" }}
+          className="mt-3 text-[10px] uppercase tracking-[0.2em] text-white/25 hover:text-white/60 transition-colors"
+          style={{ fontFamily: "var(--font-barlow)" }}
         >
-          Request Custom
+          Request custom
         </button>
       </div>
     </div>

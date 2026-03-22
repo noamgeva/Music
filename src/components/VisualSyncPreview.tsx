@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
-import { TRACKS, MOODS } from "@/lib/catalog";
+import { TRACKS } from "@/lib/catalog";
 import Waveform from "./Waveform";
 
 export default function VisualSyncPreview() {
@@ -24,171 +24,92 @@ export default function VisualSyncPreview() {
   const togglePlay = () => {
     if (!videoUrl) return;
     if (isPlaying) {
-      setIsPlaying(false);
-      videoRef.current?.pause();
+      setIsPlaying(false); videoRef.current?.pause();
       if (intervalRef.current) clearInterval(intervalRef.current);
     } else {
-      setIsPlaying(true);
-      videoRef.current?.play();
+      setIsPlaying(true); videoRef.current?.play();
       intervalRef.current = setInterval(() => {
-        const vid = videoRef.current;
-        if (vid) setProgress(vid.currentTime / (vid.duration || 1));
+        const v = videoRef.current;
+        if (v) setProgress(v.currentTime / (v.duration || 1));
       }, 100);
     }
   };
 
   return (
-    <div>
-      {/* Header */}
-      <div className="px-8 py-4 border-b border-zinc-200 flex items-center justify-between">
-        <span
-          className="text-[10px] uppercase tracking-[0.25em] text-zinc-400"
-          style={{ fontFamily: "var(--font-inter)" }}
-        >
-          Visual Sync
-        </span>
-        <span className="text-xs text-zinc-400">
-          Upload a silent cut and audition tracks in real time
-        </span>
-      </div>
-
-      <div className="grid lg:grid-cols-2 divide-y lg:divide-y-0 lg:divide-x divide-zinc-200">
-
-        {/* Left: Video */}
-        <div className="p-8">
-          {!videoUrl ? (
-            <div
-              onDrop={(e) => {
-                e.preventDefault();
-                setIsDragging(false);
-                const f = e.dataTransfer.files[0];
-                if (f) handleFile(f);
-              }}
-              onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
-              onDragLeave={() => setIsDragging(false)}
-              onClick={() => document.getElementById("vsync-upload")?.click()}
-              className={`aspect-video border-2 border-dashed flex flex-col items-center justify-center cursor-pointer transition-colors ${
-                isDragging ? "border-black bg-zinc-50" : "border-zinc-200 hover:border-zinc-400"
-              }`}
-            >
-              <input
-                id="vsync-upload"
-                type="file"
-                accept="video/*"
-                className="hidden"
-                onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])}
-              />
-              <p
-                className="text-xs uppercase tracking-[0.25em] font-semibold text-zinc-500 mb-2"
-                style={{ fontFamily: "var(--font-inter)" }}
-              >
-                Drop silent clip here
-              </p>
-              <p className="text-[11px] text-zinc-300">or click to browse — MP4, MOV, WebM</p>
-            </div>
-          ) : (
-            <div className="relative aspect-video bg-black">
-              <video
-                ref={videoRef}
-                src={videoUrl}
-                className="w-full h-full object-contain"
-                onEnded={() => { setIsPlaying(false); setProgress(0); }}
-              />
-              <div className="absolute inset-0 flex items-center justify-center">
-                <button
-                  onClick={togglePlay}
-                  className="w-11 h-11 bg-white flex items-center justify-center hover:bg-zinc-100 transition-colors"
-                  aria-label={isPlaying ? "Pause" : "Play"}
-                >
-                  {isPlaying ? (
-                    <svg width="12" height="12" viewBox="0 0 12 12" fill="black">
-                      <rect x="1" y="0" width="4" height="12" />
-                      <rect x="7" y="0" width="4" height="12" />
-                    </svg>
-                  ) : (
-                    <svg width="12" height="12" viewBox="0 0 12 12" fill="black" style={{ marginLeft: 2 }}>
-                      <path d="M1 0L12 6L1 12V0Z" />
-                    </svg>
-                  )}
-                </button>
-              </div>
-              <button
-                onClick={() => { setVideoUrl(null); setIsPlaying(false); setProgress(0); }}
-                className="absolute top-3 right-3 w-7 h-7 bg-white text-black text-xs font-bold flex items-center justify-center hover:bg-zinc-100"
-              >
-                &times;
-              </button>
-              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-white/20">
-                <div className="h-full bg-white transition-all" style={{ width: `${progress * 100}%` }} />
-              </div>
-            </div>
-          )}
-
-          {/* Currently auditioning */}
-          <div className="mt-6 pt-6 border-t border-zinc-100">
-            <p
-              className="text-[10px] uppercase tracking-[0.25em] text-zinc-400 mb-2"
-              style={{ fontFamily: "var(--font-inter)" }}
-            >
-              Now Auditioning
+    <div className="grid lg:grid-cols-2 gap-10">
+      {/* Video */}
+      <div>
+        {!videoUrl ? (
+          <div
+            onDrop={(e) => { e.preventDefault(); setIsDragging(false); const f = e.dataTransfer.files[0]; if (f) handleFile(f); }}
+            onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+            onDragLeave={() => setIsDragging(false)}
+            onClick={() => document.getElementById("vsync-upload")?.click()}
+            className="aspect-video flex flex-col items-center justify-center cursor-pointer transition-colors border-2 border-dashed"
+            style={{ borderColor: isDragging ? "#E04020" : "rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.03)" }}
+          >
+            <input id="vsync-upload" type="file" accept="video/*" className="hidden"
+              onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])} />
+            <p className="text-sm font-semibold text-white/50 mb-1 uppercase tracking-[0.2em]" style={{ fontFamily: "var(--font-barlow)" }}>
+              Drop your silent clip here
             </p>
-            <p
-              className="text-2xl font-bold italic"
-              style={{ fontFamily: "var(--font-playfair)" }}
-            >
-              {selectedTrack.title}
-            </p>
-            <p
-              className="text-xs text-zinc-400 mt-1"
-              style={{ fontFamily: "var(--font-inter)" }}
-            >
-              {selectedTrack.bpm} BPM &middot; {selectedTrack.key} &middot; {selectedTrack.duration}
-            </p>
+            <p className="text-xs text-white/20" style={{ fontFamily: "var(--font-barlow)" }}>or click to browse — MP4, MOV, WebM</p>
           </div>
-        </div>
-
-        {/* Right: Track list */}
-        <div className="divide-y divide-zinc-100 max-h-[600px] overflow-y-auto">
-          {TRACKS.map((track) => {
-            const isSelected = selectedTrack.id === track.id;
-            return (
-              <button
-                key={track.id}
-                onClick={() => setSelectedTrack(track)}
-                className={`w-full text-left px-7 py-5 transition-colors ${
-                  isSelected ? "bg-black text-white" : "hover:bg-zinc-50"
-                }`}
-              >
-                <div className="flex items-start justify-between mb-1">
-                  <p
-                    className={`text-sm font-bold italic ${isSelected ? "text-white" : "text-black"}`}
-                    style={{ fontFamily: "var(--font-playfair)" }}
-                  >
-                    {track.title}
-                  </p>
-                  <span
-                    className={`text-[11px] ml-4 shrink-0 ${isSelected ? "text-white/50" : "text-zinc-400"}`}
-                    style={{ fontFamily: "var(--font-inter)" }}
-                  >
-                    {track.duration}
-                  </span>
-                </div>
-                <p
-                  className={`text-[10px] uppercase tracking-wider ${isSelected ? "text-white/50" : "text-zinc-400"}`}
-                  style={{ fontFamily: "var(--font-inter)" }}
-                >
-                  {track.mood}
-                </p>
-                {isSelected && (
-                  <div className="mt-3">
-                    <Waveform data={track.waveform} color="#ffffff" isPlaying={isPlaying} progress={progress} height={18} />
-                  </div>
+        ) : (
+          <div className="relative aspect-video bg-black overflow-hidden">
+            <video ref={videoRef} src={videoUrl} className="w-full h-full object-contain"
+              onEnded={() => { setIsPlaying(false); setProgress(0); }} />
+            <div className="absolute inset-0 flex items-center justify-center">
+              <button onClick={togglePlay}
+                className="w-12 h-12 rounded-full flex items-center justify-center hover:scale-105 transition-transform"
+                style={{ background: "#E04020" }}>
+                {isPlaying ? (
+                  <svg width="12" height="12" viewBox="0 0 12 12" fill="white"><rect x="0" y="0" width="4" height="12"/><rect x="8" y="0" width="4" height="12"/></svg>
+                ) : (
+                  <svg width="12" height="12" viewBox="0 0 12 12" fill="white" style={{ marginLeft: 2 }}><path d="M0 0L12 6L0 12Z"/></svg>
                 )}
               </button>
-            );
-          })}
-        </div>
+            </div>
+            <button onClick={() => { setVideoUrl(null); setIsPlaying(false); setProgress(0); }}
+              className="absolute top-3 right-3 w-7 h-7 bg-white/10 hover:bg-white/20 text-white text-sm font-bold flex items-center justify-center transition-colors">
+              &times;
+            </button>
+            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-white/10">
+              <div className="h-full transition-all" style={{ width: `${progress * 100}%`, background: "#E04020" }} />
+            </div>
+          </div>
+        )}
 
+        <div className="mt-5 pt-5 border-t border-white/8">
+          <p className="text-[10px] uppercase tracking-[0.2em] text-white/30 mb-1" style={{ fontFamily: "var(--font-barlow)" }}>Now Auditioning</p>
+          <p className="text-lg font-bold uppercase tracking-wide text-white" style={{ fontFamily: "var(--font-barlow-condensed)" }}>{selectedTrack.title}</p>
+          <p className="text-xs text-white/30 mt-1 uppercase tracking-wider" style={{ fontFamily: "var(--font-barlow)" }}>
+            {selectedTrack.bpm} BPM · {selectedTrack.key} · {selectedTrack.duration}
+          </p>
+        </div>
+      </div>
+
+      {/* Track list */}
+      <div className="space-y-1 max-h-[520px] overflow-y-auto">
+        {TRACKS.map((track) => {
+          const isSelected = selectedTrack.id === track.id;
+          return (
+            <button key={track.id} onClick={() => setSelectedTrack(track)}
+              className="w-full text-left px-4 py-4 transition-colors flex items-start justify-between gap-4"
+              style={{ background: isSelected ? "rgba(224,64,32,0.12)" : "rgba(255,255,255,0.03)" }}>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-bold uppercase text-white" style={{ fontFamily: "var(--font-barlow-condensed)" }}>{track.title}</p>
+                <p className="text-[10px] uppercase tracking-wider text-white/30 mt-0.5" style={{ fontFamily: "var(--font-barlow)" }}>{track.mood}</p>
+                {isSelected && (
+                  <div className="mt-2.5">
+                    <Waveform data={track.waveform} color="#E04020" isPlaying={isPlaying} progress={progress} height={20} />
+                  </div>
+                )}
+              </div>
+              <span className="text-xs text-white/30 shrink-0 mt-0.5" style={{ fontFamily: "var(--font-barlow)" }}>{track.duration}</span>
+            </button>
+          );
+        })}
       </div>
     </div>
   );

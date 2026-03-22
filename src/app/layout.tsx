@@ -1,28 +1,29 @@
 import type { Metadata } from "next";
-import { Playfair_Display, Inter } from "next/font/google";
+import { Barlow, Barlow_Condensed } from "next/font/google";
 import "./globals.css";
 
-const playfair = Playfair_Display({
+const barlow = Barlow({
   subsets: ["latin"],
-  variable: "--font-playfair",
+  variable: "--font-barlow",
+  weight: ["100", "200", "300", "400", "500", "600", "700", "800", "900"],
   display: "swap",
 });
 
-const inter = Inter({
+const barlowCondensed = Barlow_Condensed({
   subsets: ["latin"],
-  variable: "--font-inter",
+  variable: "--font-barlow-condensed",
+  weight: ["100", "200", "300", "400", "500", "600", "700", "800", "900"],
   display: "swap",
 });
 
 export const metadata: Metadata = {
-  title: "Noam Geva — Film Music Licensing",
-  description:
-    "Atmospheric, cinematic music for independent filmmakers. License unique tracks or commission original scores.",
+  title: "Noam Geva — Film Music",
+  description: "Atmospheric, cinematic music for independent filmmakers. License unique tracks or commission original scores.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${playfair.variable} ${inter.variable}`}>
+    <html lang="en" className={`${barlow.variable} ${barlowCondensed.variable}`}>
       <body className="antialiased bg-white text-black">{children}</body>
     </html>
   );

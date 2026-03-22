@@ -3,169 +3,99 @@
 import { useState } from "react";
 import { Track } from "@/lib/catalog";
 
-interface LicenseModalProps {
-  track: Track | null;
-  onClose: () => void;
-}
-
 const TIERS = [
-  { id: "indie",      label: "Indie Film",      price: "$299",   desc: "Festival & limited theatrical. Up to $50k budget." },
-  { id: "commercial", label: "Commercial",       price: "$799",   desc: "Broadcast & streaming. Unlimited budget." },
-  { id: "exclusive",  label: "Exclusive Buyout", price: "Custom", desc: "One film only. Full ownership. Includes custom edit." },
+  { id:"indie",      label:"Indie Film",      price:"$299",   desc:"Festival & limited theatrical. Up to $50k budget." },
+  { id:"commercial", label:"Commercial",       price:"$799",   desc:"Broadcast & streaming. Unlimited budget." },
+  { id:"exclusive",  label:"Exclusive Buyout", price:"Custom", desc:"One film only. Full ownership. Includes custom edit." },
 ];
 
-export default function LicenseModal({ track, onClose }: LicenseModalProps) {
+export default function LicenseModal({ track, onClose }: { track:Track|null; onClose:()=>void }) {
   const [selected, setSelected] = useState("indie");
-  const [step, setStep] = useState<"select" | "form" | "done">("select");
-  const [form, setForm] = useState({ name: "", email: "", project: "", notes: "" });
+  const [step, setStep] = useState<"select"|"form"|"done">("select");
+  const [form, setForm] = useState({ name:"", email:"", project:"", notes:"" });
 
   if (!track) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-      <div className="relative w-full max-w-md bg-white border border-zinc-200 shadow-xl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-6">
+      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative w-full max-w-sm overflow-hidden" style={{ background:"#111" }}>
 
         {/* Header */}
-        <div className="flex items-center justify-between px-7 py-5 border-b border-zinc-100">
+        <div className="px-7 pt-7 pb-5 flex items-start justify-between border-b border-white/8">
           <div>
-            <p className="text-[10px] uppercase tracking-[0.3em] text-zinc-400 mb-1" style={{ fontFamily: "var(--font-inter)" }}>
-              License Track
-            </p>
-            <h2 className="text-xl font-bold italic" style={{ fontFamily: "var(--font-playfair)" }}>
-              {track.title}
-            </h2>
-            <p className="text-xs text-zinc-400 mt-0.5" style={{ fontFamily: "var(--font-inter)" }}>
-              {track.mood} &middot; {track.duration} &middot; {track.key}
-            </p>
+            <p className="text-[10px] uppercase tracking-[0.2em] text-white/30 mb-1" style={{ fontFamily:"var(--font-barlow)" }}>Licensing</p>
+            <h2 className="display text-2xl font-black text-white" style={{ fontFamily:"var(--font-barlow-condensed)" }}>{track.title}</h2>
+            <p className="text-xs text-white/30 mt-0.5" style={{ fontFamily:"var(--font-barlow)" }}>{track.mood} · {track.duration}</p>
           </div>
-          <button
-            onClick={onClose}
-            className="text-zinc-300 hover:text-black text-xl leading-none transition-colors ml-4"
-            aria-label="Close"
-          >
-            &times;
-          </button>
+          <button onClick={onClose} className="text-white/30 hover:text-white text-xl leading-none mt-1 transition-colors">&times;</button>
         </div>
 
-        {step === "select" && (
-          <>
-            <div className="divide-y divide-zinc-100">
+        {step==="select" && (
+          <div className="px-7 py-6">
+            <div className="space-y-2 mb-6">
               {TIERS.map((tier) => (
-                <button
-                  key={tier.id}
-                  onClick={() => setSelected(tier.id)}
-                  className={`w-full text-left px-7 py-5 flex items-center justify-between transition-colors ${
-                    selected === tier.id ? "bg-black text-white" : "hover:bg-zinc-50"
-                  }`}
-                >
-                  <div>
-                    <div
-                      className="text-xs font-semibold uppercase tracking-[0.2em] mb-1"
-                      style={{ fontFamily: "var(--font-inter)" }}
-                    >
-                      {tier.label}
-                    </div>
-                    <div className={`text-xs ${selected === tier.id ? "text-white/50" : "text-zinc-400"}`}>
-                      {tier.desc}
-                    </div>
+                <button key={tier.id} onClick={() => setSelected(tier.id)}
+                  className="w-full text-left px-4 py-4 transition-colors"
+                  style={{ background: selected===tier.id ? "#E04020" : "rgba(255,255,255,0.05)" }}>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-sm font-bold uppercase text-white" style={{ fontFamily:"var(--font-barlow)" }}>{tier.label}</span>
+                    <span className="display text-sm font-black text-white" style={{ fontFamily:"var(--font-barlow-condensed)" }}>{tier.price}</span>
                   </div>
-                  <div
-                    className="text-lg font-bold ml-6 shrink-0"
-                    style={{ fontFamily: "var(--font-playfair)" }}
-                  >
-                    {tier.price}
-                  </div>
+                  <p className="text-xs text-white/50" style={{ fontFamily:"var(--font-barlow)" }}>{tier.desc}</p>
                 </button>
               ))}
             </div>
-            <div className="px-7 py-5 border-t border-zinc-100">
-              <button
-                onClick={() => setStep("form")}
-                className="w-full py-3 bg-black text-white text-[10px] uppercase tracking-[0.3em] font-semibold hover:bg-zinc-900 transition-colors"
-                style={{ fontFamily: "var(--font-inter)" }}
-              >
-                Continue
-              </button>
-            </div>
-          </>
+            <button onClick={() => setStep("form")}
+              className="w-full py-3.5 text-sm font-bold uppercase tracking-[0.2em] flex items-center justify-center gap-2"
+              style={{ background:"#E04020", color:"#fff", fontFamily:"var(--font-barlow)" }}>
+              Continue
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 10L10 2M10 2H4M10 2V8" stroke="white" strokeWidth="1.5" strokeLinecap="round"/></svg>
+            </button>
+          </div>
         )}
 
-        {step === "form" && (
-          <>
-            <div className="px-7 pt-6 pb-4 space-y-5">
-              <button
-                onClick={() => setStep("select")}
-                className="text-[10px] uppercase tracking-[0.2em] text-zinc-400 hover:text-black transition-colors"
-                style={{ fontFamily: "var(--font-inter)" }}
-              >
-                Back
-              </button>
+        {step==="form" && (
+          <div className="px-7 py-6">
+            <div className="space-y-4 mb-6">
               {[
-                { key: "name",    label: "Director Name",       type: "text" },
-                { key: "email",   label: "Email Address",       type: "email" },
-                { key: "project", label: "Film / Project Title", type: "text" },
+                { key:"name",    label:"Your name",    type:"text" },
+                { key:"email",   label:"Email",        type:"email" },
+                { key:"project", label:"Project title", type:"text" },
               ].map((f) => (
                 <div key={f.key}>
-                  <label
-                    className="text-[10px] uppercase tracking-[0.25em] text-zinc-400 block mb-1.5"
-                    style={{ fontFamily: "var(--font-inter)" }}
-                  >
-                    {f.label}
-                  </label>
-                  <input
-                    type={f.type}
-                    value={form[f.key as keyof typeof form]}
-                    onChange={(e) => setForm({ ...form, [f.key]: e.target.value })}
-                    className="w-full border-b border-zinc-200 focus:border-black pb-2 text-sm outline-none transition-colors bg-white"
-                  />
+                  <label className="text-[10px] uppercase tracking-[0.2em] text-white/30 block mb-1.5" style={{ fontFamily:"var(--font-barlow)" }}>{f.label}</label>
+                  <input type={f.type} value={form[f.key as keyof typeof form]}
+                    onChange={(e) => setForm({...form,[f.key]:e.target.value})}
+                    className="w-full px-3 py-2.5 text-sm text-white outline-none focus:ring-1 focus:ring-white/20"
+                    style={{ background:"rgba(255,255,255,0.07)", fontFamily:"var(--font-barlow)" }} />
                 </div>
               ))}
               <div>
-                <label
-                  className="text-[10px] uppercase tracking-[0.25em] text-zinc-400 block mb-1.5"
-                  style={{ fontFamily: "var(--font-inter)" }}
-                >
-                  Notes
-                </label>
-                <textarea
-                  rows={3}
-                  value={form.notes}
-                  onChange={(e) => setForm({ ...form, notes: e.target.value })}
-                  className="w-full border-b border-zinc-200 focus:border-black pb-2 text-sm outline-none resize-none bg-white transition-colors"
-                />
+                <label className="text-[10px] uppercase tracking-[0.2em] text-white/30 block mb-1.5" style={{ fontFamily:"var(--font-barlow)" }}>Notes</label>
+                <textarea rows={3} value={form.notes} onChange={(e) => setForm({...form,notes:e.target.value})}
+                  className="w-full px-3 py-2.5 text-sm text-white outline-none focus:ring-1 focus:ring-white/20 resize-none"
+                  style={{ background:"rgba(255,255,255,0.07)", fontFamily:"var(--font-barlow)" }} />
               </div>
             </div>
-            <div className="px-7 py-5 border-t border-zinc-100">
-              <button
-                onClick={() => setStep("done")}
-                className="w-full py-3 bg-black text-white text-[10px] uppercase tracking-[0.3em] font-semibold hover:bg-zinc-900 transition-colors"
-                style={{ fontFamily: "var(--font-inter)" }}
-              >
-                Submit Request
-              </button>
+            <div className="flex gap-3">
+              <button onClick={() => setStep("select")}
+                className="px-4 py-3 text-xs uppercase tracking-[0.2em] text-white/30 hover:text-white transition-colors"
+                style={{ fontFamily:"var(--font-barlow)" }}>Back</button>
+              <button onClick={() => setStep("done")}
+                className="flex-1 py-3 text-sm font-bold uppercase tracking-[0.2em]"
+                style={{ background:"#E04020", color:"#fff", fontFamily:"var(--font-barlow)" }}>Submit</button>
             </div>
-          </>
+          </div>
         )}
 
-        {step === "done" && (
+        {step==="done" && (
           <div className="px-7 py-14 text-center">
-            <p
-              className="text-4xl font-bold italic mb-4"
-              style={{ fontFamily: "var(--font-playfair)" }}
-            >
-              Received.
-            </p>
-            <p className="text-sm text-zinc-500 leading-relaxed">
-              Noam will review and reach out within 24 hours.
-            </p>
-            <button
-              onClick={onClose}
-              className="mt-8 px-8 py-2.5 border border-zinc-200 hover:border-black text-[10px] uppercase tracking-[0.25em] transition-colors"
-              style={{ fontFamily: "var(--font-inter)" }}
-            >
-              Close
-            </button>
+            <p className="display text-5xl font-black text-white mb-3" style={{ fontFamily:"var(--font-barlow-condensed)" }}>DONE.</p>
+            <p className="text-sm text-white/40 mb-8" style={{ fontFamily:"var(--font-barlow)" }}>Noam will be in touch within 24 hours.</p>
+            <button onClick={onClose}
+              className="px-6 py-2.5 text-sm font-bold uppercase tracking-[0.2em]"
+              style={{ background:"#E04020", color:"#fff", fontFamily:"var(--font-barlow)" }}>Close</button>
           </div>
         )}
       </div>
