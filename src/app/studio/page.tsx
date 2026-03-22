@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { TRACKS, MOODS, Track } from "@/lib/catalog";
 import { formatPlays } from "@/lib/utils";
-import { loadTracks, saveTracks, saveAudioBlob, deleteAudioBlob } from "@/lib/trackStore";
+import { loadTracks, saveTracks } from "@/lib/trackStore";
 import Waveform from "@/components/Waveform";
 import Link from "next/link";
 
@@ -387,13 +387,11 @@ export default function StudioPage() {
   const deleteTrack = (id: string) => {
     if (confirm("Delete this track?")) {
       setTracks(tracks.filter((t) => t.id !== id));
-      deleteAudioBlob(id).catch(() => { /* ignore if not stored */ });
     }
   };
 
-  /* ── Drop processing ── */
+  /* ── Drop processing — upload to Vercel Blob ── */
   const processFiles = async (files: File[]) => {
-    /* Create a processing entry for every file immediately */
     const items: ProcessingItem[] = files.map((f) => ({
       id:     `proc-${Date.now()}-${Math.random().toString(36).slice(2)}`,
       name:   f.name,
@@ -401,15 +399,24 @@ export default function StudioPage() {
     }));
     setProcessing((prev) => [...prev, ...items]);
 
-    /* Process files in parallel */
     await Promise.all(
       files.map(async (file, i) => {
         const item = items[i];
         try {
+          /* 1. Analyse waveform + duration from audio data */
           const { waveform, duration } = await audioDataFromFile(file);
-          const trackId = `t${Date.now()}-${i}`;
+
+          /* 2. Upload file to Vercel Blob via API route */
+          const res = await fetch(
+            `/api/upload?filename=${encodeURIComponent(file.name)}`,
+            { method: "POST", body: file, headers: { "content-type": file.type || "audio/mpeg" } }
+          );
+          if (!res.ok) throw new Error(await res.text());
+          const { url: audioSrc } = await res.json() as { url: string };
+
+          /* 3. Create track with the public cloud URL */
           const newTrack: Track = {
-            id:          trackId,
+            id:          `t${Date.now()}-${i}-${Math.random().toString(36).slice(2)}`,
             title:       titleFromFile(file.name),
             mood:        "Desert Mysticism",
             duration,
@@ -420,19 +427,14 @@ export default function StudioPage() {
             plays:       0,
             licensed:    0,
             waveform,
+            audioSrc,   /* ← permanent public URL, works on any device */
           };
-          /* Persist the raw audio blob so the catalog player can stream it */
-          await saveAudioBlob(trackId, file);
           setTracks((prev) => [...prev, newTrack]);
-          setProcessing((prev) =>
-            prev.map((p) => p.id === item.id ? { ...p, status: "done" } : p)
-          );
-        } catch {
-          setProcessing((prev) =>
-            prev.map((p) => p.id === item.id ? { ...p, status: "error" } : p)
-          );
+          setProcessing((prev) => prev.map((p) => p.id === item.id ? { ...p, status: "done" } : p));
+        } catch (err) {
+          console.error("Upload failed:", err);
+          setProcessing((prev) => prev.map((p) => p.id === item.id ? { ...p, status: "error" } : p));
         }
-        /* Fade out after 2.5 s */
         setTimeout(() => {
           setProcessing((prev) => prev.filter((p) => p.id !== item.id));
         }, 2500);

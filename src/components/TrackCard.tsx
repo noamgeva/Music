@@ -4,7 +4,6 @@ import { useState, useRef, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Track } from "@/lib/catalog";
 import { formatPlays } from "@/lib/utils";
-import { getAudioBlob } from "@/lib/trackStore";
 import Waveform from "./Waveform";
 
 interface TrackCardProps {
@@ -17,35 +16,32 @@ export default function TrackCard({ track, onLicense, onRequest }: TrackCardProp
   const [isPlaying, setIsPlaying]   = useState(false);
   const [progress, setProgress]     = useState(0);
   const [hovered, setHovered]       = useState(false);
-  const [hasAudio, setHasAudio]     = useState<boolean | null>(null); // null = not checked yet
   const [noAudioMsg, setNoAudioMsg] = useState(false);
 
-  const audioRef   = useRef<HTMLAudioElement | null>(null);
-  const blobUrlRef = useRef<string | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  /* Check if audio exists for this track (quick metadata lookup) */
-  useEffect(() => {
-    let cancelled = false;
-    getAudioBlob(track.id)
-      .then((blob) => { if (!cancelled) setHasAudio(!!blob); })
-      .catch(() => { if (!cancelled) setHasAudio(false); });
-    return () => { cancelled = true; };
-  }, [track.id]);
+  const hasAudio = !!track.audioSrc;
 
-  /* Cleanup audio on unmount or track change */
+  /* Cleanup on unmount or track change */
   useEffect(() => {
     return () => {
-      audioRef.current?.pause();
-      if (blobUrlRef.current) {
-        URL.revokeObjectURL(blobUrlRef.current);
-        blobUrlRef.current = null;
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
       }
-      audioRef.current = null;
+      setIsPlaying(false);
+      setProgress(0);
     };
   }, [track.id]);
 
   const togglePlay = async (e: React.MouseEvent) => {
     e.stopPropagation();
+
+    if (!hasAudio) {
+      setNoAudioMsg(true);
+      setTimeout(() => setNoAudioMsg(false), 2000);
+      return;
+    }
 
     /* Pause */
     if (isPlaying) {
@@ -56,18 +52,8 @@ export default function TrackCard({ track, onLicense, onRequest }: TrackCardProp
 
     /* Build audio element on first play */
     if (!audioRef.current) {
-      const blob = await getAudioBlob(track.id);
-      if (!blob) {
-        /* No audio stored — brief flash message */
-        setNoAudioMsg(true);
-        setTimeout(() => setNoAudioMsg(false), 2000);
-        return;
-      }
-      const url = URL.createObjectURL(blob);
-      blobUrlRef.current = url;
-
-      const audio       = new Audio(url);
-      audioRef.current  = audio;
+      const audio = new Audio(track.audioSrc);
+      audioRef.current = audio;
 
       audio.addEventListener("timeupdate", () => {
         if (audio.duration > 0) setProgress(audio.currentTime / audio.duration);
@@ -115,15 +101,12 @@ export default function TrackCard({ track, onLicense, onRequest }: TrackCardProp
           onClick={togglePlay}
           className="absolute top-5 left-5 w-9 h-9 rounded-full flex items-center justify-center"
           animate={{
-            background: isPlaying
-              ? "#E04020"
-              : hasAudio === false
-                ? "rgba(255,255,255,0.04)"
-                : "rgba(255,255,255,0.1)",
+            background: isPlaying ? "#E04020" : hasAudio ? "rgba(255,255,255,0.1)" : "rgba(255,255,255,0.04)",
           }}
-          whileHover={{ scale: hasAudio === false ? 1 : 1.1 }}
-          whileTap={{ scale: hasAudio === false ? 1 : 0.92 }}
+          whileHover={{ scale: hasAudio ? 1.1 : 1 }}
+          whileTap={{ scale: hasAudio ? 0.92 : 1 }}
           transition={{ duration: 0.15 }}
+          title={hasAudio ? (isPlaying ? "Pause" : "Play") : "No audio uploaded"}
           aria-label={isPlaying ? "Pause" : "Play"}
         >
           {isPlaying ? (
@@ -133,26 +116,25 @@ export default function TrackCard({ track, onLicense, onRequest }: TrackCardProp
             </svg>
           ) : (
             <svg width="9" height="9" viewBox="0 0 9 9"
-              fill={hasAudio === false ? "rgba(255,255,255,0.2)" : "white"}
+              fill={hasAudio ? "white" : "rgba(255,255,255,0.2)"}
               style={{ marginLeft: 1 }}>
               <path d="M0 0L9 4.5L0 9Z"/>
             </svg>
           )}
         </motion.button>
 
-        {/* "No audio" flash */}
+        {/* "No audio" tooltip */}
         {noAudioMsg && (
-          <motion.div
-            initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-            className="absolute top-5 left-16 text-[10px] uppercase tracking-[0.15em] text-white/40"
+          <div className="absolute top-5 left-16 text-[10px] uppercase tracking-[0.15em] text-white/40"
             style={{ fontFamily: "var(--font-barlow)" }}>
-            No audio uploaded
-          </motion.div>
+            Upload audio in Studio
+          </div>
         )}
 
         {/* Waveform */}
         <div className="w-full">
-          <Waveform data={track.waveform} color="#E04020" isPlaying={isPlaying} progress={progress} height={56} />
+          <Waveform data={track.waveform} color={hasAudio ? "#E04020" : "rgba(255,255,255,0.15)"}
+            isPlaying={isPlaying} progress={progress} height={56} />
         </div>
 
         {/* Duration */}
@@ -165,12 +147,10 @@ export default function TrackCard({ track, onLicense, onRequest }: TrackCardProp
       {/* Info */}
       <div className="pt-4 pb-6">
         <div className="flex items-start justify-between gap-3">
-          <div className="flex-1 min-w-0">
-            <h3 className="text-base font-semibold text-white leading-snug mb-1 group-hover:text-white/80 transition-colors"
-              style={{ fontFamily: "var(--font-barlow)" }}>
-              {track.title}
-            </h3>
-          </div>
+          <h3 className="flex-1 text-base font-semibold text-white leading-snug mb-1 group-hover:text-white/80 transition-colors"
+            style={{ fontFamily: "var(--font-barlow)" }}>
+            {track.title}
+          </h3>
           <motion.button
             onClick={() => onLicense?.(track)}
             className="w-9 h-9 rounded-full flex items-center justify-center shrink-0"
