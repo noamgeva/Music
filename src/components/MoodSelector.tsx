@@ -9,26 +9,20 @@ interface MoodSelectorProps {
 
 export default function MoodSelector({ selected, onSelect }: MoodSelectorProps) {
   return (
-    <section className="border-b border-black">
-      {/* Section label */}
-      <div className="px-6 py-4 border-b border-black flex items-center justify-between">
-        <span
-          className="text-[10px] uppercase tracking-[0.25em] font-medium"
-          style={{ fontFamily: "var(--font-inter)" }}
-        >
-          Filter by Mood
+    <section className="border-b border-zinc-200">
+      <div className="px-8 py-3 border-b border-zinc-200 flex items-center justify-between">
+        <span className="text-[10px] uppercase tracking-[0.25em] text-zinc-400" style={{ fontFamily: "var(--font-inter)" }}>
+          Filter by mood
         </span>
         {selected && (
           <button
             onClick={() => onSelect(null)}
-            className="text-[10px] uppercase tracking-[0.2em] underline underline-offset-2"
+            className="text-[10px] uppercase tracking-[0.2em] text-zinc-400 hover:text-black transition-colors"
           >
             Clear
           </button>
         )}
       </div>
-
-      {/* Mood buttons — horizontal scroll on mobile */}
       <div className="flex overflow-x-auto">
         {MOODS.map((mood, i) => {
           const isSelected = selected === mood.name;
@@ -37,18 +31,19 @@ export default function MoodSelector({ selected, onSelect }: MoodSelectorProps) 
             <button
               key={mood.name}
               onClick={() => onSelect(isSelected ? null : mood.name)}
-              className={`group flex-1 min-w-[160px] px-6 py-8 text-left transition-colors duration-150 ${
-                !isLast ? "border-r border-black" : ""
+              className={`flex-1 min-w-[180px] px-7 py-7 text-left transition-colors duration-150 ${
+                !isLast ? "border-r border-zinc-200" : ""
               } ${isSelected ? "bg-black text-white" : "bg-white text-black hover:bg-zinc-50"}`}
             >
-              <div className="text-2xl mb-4">{mood.icon}</div>
               <div
-                className="text-sm font-bold uppercase tracking-wider mb-2 leading-tight"
+                className="text-[11px] uppercase tracking-[0.25em] font-semibold mb-2"
                 style={{ fontFamily: "var(--font-inter)" }}
               >
                 {mood.name}
               </div>
-              <div className="text-[11px] leading-relaxed opacity-60">{mood.description}</div>
+              <div className={`text-xs leading-relaxed ${isSelected ? "text-white/60" : "text-zinc-400"}`}>
+                {mood.description}
+              </div>
             </button>
           );
         })}

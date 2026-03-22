@@ -21,48 +21,30 @@ export interface Track {
   licensed: number;
 }
 
-export const MOODS: { name: Mood; color: string; bg: string; description: string; icon: string }[] = [
+export const MOODS: { name: Mood; description: string }[] = [
   {
     name: "Desert Mysticism",
-    color: "#D4A853",
-    bg: "from-amber-950 to-stone-950",
     description: "Vast, ancient, spiritual. Oud drones and sand-worn percussion.",
-    icon: "🌵",
   },
   {
     name: "Urban Solitude",
-    color: "#6B8CAE",
-    bg: "from-slate-900 to-zinc-950",
     description: "Midnight city hum. Electronic pulse beneath human stillness.",
-    icon: "🌆",
   },
   {
     name: "Ancient Tension",
-    color: "#8B3A3A",
-    bg: "from-red-950 to-stone-950",
     description: "Ritual dread. Strings that remember. Brass that forgets nothing.",
-    icon: "⚔️",
   },
   {
     name: "Cosmic Drift",
-    color: "#4A6B8A",
-    bg: "from-indigo-950 to-slate-950",
     description: "Infinite and weightless. Synthetic textures dissolving into void.",
-    icon: "🌌",
   },
   {
     name: "Primal Ritual",
-    color: "#5C7A3E",
-    bg: "from-green-950 to-stone-950",
     description: "Earth percussion. Chant and fire. Pre-language sonic memory.",
-    icon: "🔥",
   },
   {
     name: "Neon Melancholy",
-    color: "#9B5DE5",
-    bg: "from-purple-950 to-zinc-950",
     description: "Beautiful sadness under fluorescent lights. Cinematic longing.",
-    icon: "💜",
   },
 ];
 
