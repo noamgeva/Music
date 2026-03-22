@@ -31,6 +31,7 @@ interface ProcessingItem {
   id: string;
   name: string;
   status: "processing" | "done" | "error";
+  errorMsg?: string;
 }
 
 /* ── AUDIO UTILS ── */
@@ -411,8 +412,9 @@ export default function StudioPage() {
             `/api/upload?filename=${encodeURIComponent(file.name)}`,
             { method: "POST", body: file, headers: { "content-type": file.type || "audio/mpeg" } }
           );
-          if (!res.ok) throw new Error(await res.text());
-          const { url: audioSrc } = await res.json() as { url: string };
+          const json = await res.json() as { url?: string; error?: string };
+          if (!res.ok || !json.url) throw new Error(json.error ?? `HTTP ${res.status}`);
+          const audioSrc = json.url;
 
           /* 3. Create track with the public cloud URL */
           const newTrack: Track = {
@@ -432,8 +434,16 @@ export default function StudioPage() {
           setTracks((prev) => [...prev, newTrack]);
           setProcessing((prev) => prev.map((p) => p.id === item.id ? { ...p, status: "done" } : p));
         } catch (err) {
-          console.error("Upload failed:", err);
-          setProcessing((prev) => prev.map((p) => p.id === item.id ? { ...p, status: "error" } : p));
+          const errorMsg = err instanceof Error ? err.message : "Upload failed";
+          console.error("Upload failed:", errorMsg);
+          setProcessing((prev) => prev.map((p) =>
+            p.id === item.id ? { ...p, status: "error", errorMsg } : p
+          ));
+          /* Keep errors visible longer so user can read them */
+          setTimeout(() => {
+            setProcessing((prev) => prev.filter((p) => p.id !== item.id));
+          }, 8000);
+          return;
         }
         setTimeout(() => {
           setProcessing((prev) => prev.filter((p) => p.id !== item.id));
@@ -562,39 +572,52 @@ export default function StudioPage() {
                             animate={{ opacity: 1, x: 0 }}
                             exit={{ opacity: 0, x: 12, height: 0, marginBottom: 0, paddingTop: 0, paddingBottom: 0 }}
                             transition={{ duration: 0.25 }}
-                            className="flex items-center gap-4 px-4 py-3"
-                            style={{ background: "rgba(255,255,255,0.03)" }}>
+                            className="flex flex-col gap-1 px-4 py-3"
+                            style={{
+                              background: item.status === "error"
+                                ? "rgba(248,113,113,0.06)"
+                                : "rgba(255,255,255,0.03)",
+                            }}>
 
-                            {/* Status icon */}
-                            {item.status === "processing" && (
-                              <motion.div
-                                animate={{ rotate: 360 }}
-                                transition={{ duration: 0.9, repeat: Infinity, ease: "linear" }}
-                                className="w-4 h-4 rounded-full shrink-0"
-                                style={{ border: "1.5px solid rgba(255,255,255,0.15)", borderTopColor: "rgba(255,255,255,0.7)" }}
-                              />
-                            )}
-                            {item.status === "done" && (
-                              <motion.div
-                                initial={{ scale: 0 }} animate={{ scale: 1 }}
-                                className="w-4 h-4 flex items-center justify-center text-xs shrink-0"
-                                style={{ color: "#4ade80" }}>✓</motion.div>
-                            )}
-                            {item.status === "error" && (
-                              <div className="w-4 h-4 flex items-center justify-center text-xs shrink-0"
-                                style={{ color: "#f87171" }}>✗</div>
-                            )}
+                            <div className="flex items-center gap-4">
+                              {/* Status icon */}
+                              {item.status === "processing" && (
+                                <motion.div
+                                  animate={{ rotate: 360 }}
+                                  transition={{ duration: 0.9, repeat: Infinity, ease: "linear" }}
+                                  className="w-4 h-4 rounded-full shrink-0"
+                                  style={{ border: "1.5px solid rgba(255,255,255,0.15)", borderTopColor: "rgba(255,255,255,0.7)" }}
+                                />
+                              )}
+                              {item.status === "done" && (
+                                <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }}
+                                  className="w-4 h-4 flex items-center justify-center text-xs shrink-0"
+                                  style={{ color: "#4ade80" }}>✓</motion.div>
+                              )}
+                              {item.status === "error" && (
+                                <div className="w-4 h-4 flex items-center justify-center text-xs shrink-0"
+                                  style={{ color: "#f87171" }}>✗</div>
+                              )}
 
-                            <p className="text-xs text-white/50 truncate flex-1"
-                              style={{ fontFamily: "var(--font-barlow)" }}>{item.name}</p>
+                              <p className="text-xs text-white/50 truncate flex-1"
+                                style={{ fontFamily: "var(--font-barlow)" }}>{item.name}</p>
 
-                            <p className="text-[10px] uppercase tracking-[0.15em] shrink-0"
-                              style={{
-                                fontFamily: "var(--font-barlow)",
-                                color: item.status === "done" ? "#4ade80" : item.status === "error" ? "#f87171" : "rgba(255,255,255,0.3)",
-                              }}>
-                              {item.status === "processing" ? "Analysing waveform…" : item.status === "done" ? "Added" : "Error — skipped"}
-                            </p>
+                              <p className="text-[10px] uppercase tracking-[0.15em] shrink-0"
+                                style={{
+                                  fontFamily: "var(--font-barlow)",
+                                  color: item.status === "done" ? "#4ade80" : item.status === "error" ? "#f87171" : "rgba(255,255,255,0.3)",
+                                }}>
+                                {item.status === "processing" ? "Uploading…" : item.status === "done" ? "Added" : "Failed"}
+                              </p>
+                            </div>
+
+                            {/* Error message — full text so user knows what to fix */}
+                            {item.status === "error" && item.errorMsg && (
+                              <p className="text-[11px] leading-relaxed ml-8"
+                                style={{ color: "#fca5a5", fontFamily: "var(--font-barlow)" }}>
+                                {item.errorMsg}
+                              </p>
+                            )}
                           </motion.div>
                         ))}
                       </AnimatePresence>
