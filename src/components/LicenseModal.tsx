@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { Track } from "@/lib/catalog";
-import { MOODS } from "@/lib/catalog";
 
 interface LicenseModalProps {
   track: Track | null;
@@ -12,7 +11,7 @@ interface LicenseModalProps {
 const TIERS = [
   { id: "indie", label: "Indie Film", price: "$299", desc: "Festival & limited theatrical. Up to $50k budget." },
   { id: "commercial", label: "Commercial", price: "$799", desc: "Broadcast & streaming. Unlimited budget." },
-  { id: "exclusive", label: "Exclusive", price: "Custom", desc: "Full buyout. One film only. Includes custom edit." },
+  { id: "exclusive", label: "Exclusive Buyout", price: "Custom", desc: "One film only. Full ownership. Includes custom edit." },
 ];
 
 export default function LicenseModal({ track, onClose }: LicenseModalProps) {
@@ -21,113 +20,145 @@ export default function LicenseModal({ track, onClose }: LicenseModalProps) {
   const [form, setForm] = useState({ name: "", email: "", project: "", notes: "" });
 
   if (!track) return null;
-  const mood = MOODS.find((m) => m.name === track.mood);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={onClose} />
-      <div
-        className="relative w-full max-w-md rounded-3xl border border-white/10 bg-zinc-950 p-8 shadow-2xl"
-        style={{ boxShadow: `0 0 80px ${mood?.color}20` }}
-      >
-        {/* Close */}
-        <button
-          onClick={onClose}
-          className="absolute top-4 right-4 w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-white/50 hover:text-white transition-all"
-        >
-          ×
-        </button>
+      <div className="absolute inset-0 bg-black/60" onClick={onClose} />
+      <div className="relative w-full max-w-md bg-white border border-black shadow-2xl">
+        {/* Header */}
+        <div className="border-b border-black px-6 py-4 flex items-center justify-between">
+          <span
+            className="text-[10px] uppercase tracking-[0.3em] font-semibold"
+            style={{ fontFamily: "var(--font-inter)" }}
+          >
+            License Track
+          </span>
+          <button onClick={onClose} className="text-lg leading-none text-zinc-400 hover:text-black transition-colors">×</button>
+        </div>
+
+        <div className="px-6 py-4 border-b border-zinc-100">
+          <h2
+            className="text-2xl font-bold italic"
+            style={{ fontFamily: "var(--font-playfair)" }}
+          >
+            {track.title}
+          </h2>
+          <p className="text-xs text-zinc-400 mt-1">{track.mood} · {track.duration} · {track.key}</p>
+        </div>
 
         {step === "select" && (
           <>
-            <div className="mb-6">
-              <p className="text-white/40 text-xs uppercase tracking-widest mb-1">License</p>
-              <h2 className="text-white text-xl font-semibold">{track.title}</h2>
-              <p className="text-white/30 text-sm mt-1">{track.mood} · {track.duration} · {track.key}</p>
-            </div>
-            <div className="space-y-3 mb-6">
+            <div className="divide-y divide-zinc-100">
               {TIERS.map((tier) => (
                 <button
                   key={tier.id}
                   onClick={() => setSelected(tier.id)}
-                  className="w-full text-left p-4 rounded-xl border transition-all duration-200"
-                  style={{
-                    borderColor: selected === tier.id ? `${mood?.color}66` : "rgba(255,255,255,0.06)",
-                    background: selected === tier.id ? `${mood?.color}10` : "rgba(255,255,255,0.02)",
-                  }}
+                  className={`w-full text-left px-6 py-4 flex items-center justify-between transition-colors ${
+                    selected === tier.id ? "bg-black text-white" : "hover:bg-zinc-50"
+                  }`}
                 >
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-white/80 text-sm font-medium">{tier.label}</span>
-                    <span className="font-bold text-sm" style={{ color: mood?.color }}>{tier.price}</span>
+                  <div>
+                    <div
+                      className="text-sm font-bold uppercase tracking-wider mb-0.5"
+                      style={{ fontFamily: "var(--font-inter)" }}
+                    >
+                      {tier.label}
+                    </div>
+                    <div className={`text-xs ${selected === tier.id ? "text-white/60" : "text-zinc-400"}`}>{tier.desc}</div>
                   </div>
-                  <p className="text-white/30 text-xs">{tier.desc}</p>
+                  <div
+                    className={`text-lg font-bold ml-4 shrink-0 ${selected === tier.id ? "text-white" : "text-black"}`}
+                    style={{ fontFamily: "var(--font-playfair)" }}
+                  >
+                    {tier.price}
+                  </div>
                 </button>
               ))}
             </div>
-            <button
-              onClick={() => setStep("form")}
-              className="w-full py-3 rounded-xl font-semibold text-sm transition-all duration-200"
-              style={{ background: mood?.color, color: "#000" }}
-            >
-              Continue →
-            </button>
+            <div className="px-6 py-5 border-t border-black">
+              <button
+                onClick={() => setStep("form")}
+                className="w-full py-3.5 bg-black text-white text-xs uppercase tracking-[0.25em] font-semibold hover:bg-zinc-800 transition-colors"
+                style={{ fontFamily: "var(--font-inter)" }}
+              >
+                Continue →
+              </button>
+            </div>
           </>
         )}
 
         {step === "form" && (
           <>
-            <div className="mb-6">
-              <button onClick={() => setStep("select")} className="text-white/30 text-xs hover:text-white/60 mb-4 block">← Back</button>
-              <h2 className="text-white text-xl font-semibold">Your Details</h2>
-            </div>
-            <div className="space-y-3 mb-6">
+            <div className="px-6 pt-5 pb-4 space-y-4">
+              <button
+                onClick={() => setStep("select")}
+                className="text-xs text-zinc-400 hover:text-black transition-colors uppercase tracking-wider"
+              >
+                ← Back
+              </button>
               {[
-                { key: "name", label: "Your Name", type: "text" },
-                { key: "email", label: "Email", type: "email" },
+                { key: "name", label: "Director Name", type: "text" },
+                { key: "email", label: "Email Address", type: "email" },
                 { key: "project", label: "Film / Project Title", type: "text" },
-              ].map((field) => (
-                <div key={field.key}>
-                  <label className="text-xs text-white/40 mb-1 block">{field.label}</label>
+              ].map((f) => (
+                <div key={f.key}>
+                  <label
+                    className="text-[10px] uppercase tracking-[0.25em] text-zinc-400 mb-1 block"
+                    style={{ fontFamily: "var(--font-inter)" }}
+                  >
+                    {f.label}
+                  </label>
                   <input
-                    type={field.type}
-                    value={form[field.key as keyof typeof form]}
-                    onChange={(e) => setForm({ ...form, [field.key]: e.target.value })}
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder-white/20 focus:outline-none focus:border-white/25 transition-colors"
+                    type={f.type}
+                    value={form[f.key as keyof typeof form]}
+                    onChange={(e) => setForm({ ...form, [f.key]: e.target.value })}
+                    className="w-full border border-zinc-200 focus:border-black px-4 py-2.5 text-sm outline-none transition-colors"
                   />
                 </div>
               ))}
               <div>
-                <label className="text-xs text-white/40 mb-1 block">Notes (optional)</label>
+                <label
+                  className="text-[10px] uppercase tracking-[0.25em] text-zinc-400 mb-1 block"
+                  style={{ fontFamily: "var(--font-inter)" }}
+                >
+                  Notes
+                </label>
                 <textarea
+                  rows={3}
                   value={form.notes}
                   onChange={(e) => setForm({ ...form, notes: e.target.value })}
-                  rows={3}
-                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder-white/20 focus:outline-none focus:border-white/25 transition-colors resize-none"
-                  placeholder="Scene description, usage notes..."
+                  className="w-full border border-zinc-200 focus:border-black px-4 py-2.5 text-sm outline-none resize-none transition-colors"
                 />
               </div>
             </div>
-            <button
-              onClick={() => setStep("done")}
-              className="w-full py-3 rounded-xl font-semibold text-sm"
-              style={{ background: mood?.color, color: "#000" }}
-            >
-              Submit License Request
-            </button>
+            <div className="px-6 py-5 border-t border-black">
+              <button
+                onClick={() => setStep("done")}
+                className="w-full py-3.5 bg-black text-white text-xs uppercase tracking-[0.25em] font-semibold hover:bg-zinc-800 transition-colors"
+                style={{ fontFamily: "var(--font-inter)" }}
+              >
+                Submit Request
+              </button>
+            </div>
           </>
         )}
 
         {step === "done" && (
-          <div className="text-center py-6">
-            <div className="text-5xl mb-4">✓</div>
-            <h2 className="text-white text-xl font-semibold mb-2">Request Received</h2>
-            <p className="text-white/40 text-sm leading-relaxed">
-              Noam will review your request and reach out within 24 hours with your license agreement.
+          <div className="px-6 py-12 text-center">
+            <div className="text-4xl mb-4">✓</div>
+            <h3
+              className="text-2xl font-bold italic mb-2"
+              style={{ fontFamily: "var(--font-playfair)" }}
+            >
+              Request Received
+            </h3>
+            <p className="text-sm text-zinc-500 leading-relaxed">
+              Noam will review and reach out within 24 hours with your license agreement.
             </p>
             <button
               onClick={onClose}
-              className="mt-6 px-8 py-3 rounded-xl font-semibold text-sm"
-              style={{ background: mood?.color, color: "#000" }}
+              className="mt-8 px-8 py-3 border border-black text-xs uppercase tracking-[0.25em] font-semibold hover:bg-black hover:text-white transition-colors"
+              style={{ fontFamily: "var(--font-inter)" }}
             >
               Close
             </button>

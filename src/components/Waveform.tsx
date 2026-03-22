@@ -4,13 +4,13 @@ interface WaveformProps {
   data: number[];
   color?: string;
   isPlaying?: boolean;
-  progress?: number; // 0-1
+  progress?: number;
   height?: number;
 }
 
 export default function Waveform({
   data,
-  color = "#D4A853",
+  color = "#0a0a0a",
   isPlaying = false,
   progress = 0,
   height = 40,
@@ -18,22 +18,20 @@ export default function Waveform({
   const filled = Math.round(data.length * progress);
 
   return (
-    <div
-      className="flex items-center gap-[2px] w-full"
-      style={{ height }}
-    >
+    <div className="flex items-center gap-[2px] w-full" style={{ height }}>
       {data.map((amp, i) => {
-        const barHeight = Math.max(3, amp * height);
+        const barH = Math.max(2, amp * height);
         const isPast = i < filled;
         const isActive = isPlaying && Math.abs(i - filled) < 3;
         return (
           <div
             key={i}
-            className={`flex-1 rounded-full transition-all duration-75 ${isActive ? "waveform-bar-active" : ""}`}
+            className={`flex-1 rounded-sm ${isActive ? "waveform-bar-active" : ""}`}
             style={{
-              height: barHeight,
-              background: isPast ? color : "rgba(255,255,255,0.15)",
-              opacity: isActive ? 1 : isPast ? 0.9 : 0.4,
+              height: barH,
+              background: isPast ? color : "#e0e0e0",
+              opacity: isActive ? 1 : isPast ? 0.85 : 1,
+              transition: "background 0.1s",
             }}
           />
         );
