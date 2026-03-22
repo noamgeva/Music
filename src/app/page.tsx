@@ -2,7 +2,8 @@
 
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { TRACKS, MOODS, Mood, Track } from "@/lib/catalog";
+import { MOODS, Mood, Track } from "@/lib/catalog";
+import { loadTracks } from "@/lib/trackStore";
 import MoodSelector from "@/components/MoodSelector";
 import TrackCard from "@/components/TrackCard";
 import VisualSyncPreview from "@/components/VisualSyncPreview";
@@ -23,9 +24,18 @@ export default function HomePage() {
   const [licenseTrack, setLicenseTrack]   = useState<Track | null>(null);
   const [section, setSection]             = useState<Section>("catalog");
   const [prevSection, setPrevSection]     = useState<Section>("catalog");
+  const [allTracks, setAllTracks]         = useState<Track[]>(() => loadTracks());
   const contentRef = useRef<HTMLDivElement>(null);
 
-  const filteredTracks = selectedMood ? TRACKS.filter((t) => t.mood === selectedMood) : TRACKS;
+  /* Re-sync from localStorage whenever the tab gets focus (Studio may have changed tracks) */
+  useEffect(() => {
+    const sync = () => setAllTracks(loadTracks());
+    window.addEventListener("focus", sync);
+    window.addEventListener("storage", sync);
+    return () => { window.removeEventListener("focus", sync); window.removeEventListener("storage", sync); };
+  }, []);
+
+  const filteredTracks = selectedMood ? allTracks.filter((t) => t.mood === selectedMood) : allTracks;
 
   const goToSection = (s: Section) => {
     setPrevSection(section);

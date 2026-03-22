@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { TRACKS, MOODS, Track } from "@/lib/catalog";
 import { formatPlays } from "@/lib/utils";
+import { loadTracks, saveTracks, saveAudioBlob, deleteAudioBlob } from "@/lib/trackStore";
 import Waveform from "@/components/Waveform";
 import Link from "next/link";
 
@@ -335,20 +336,15 @@ export default function StudioPage() {
   const [addingTrack, setAddingTrack]   = useState(false);
   const [processing, setProcessing]     = useState<ProcessingItem[]>([]);
 
-  /* Auth + localStorage hydration */
+  /* Auth + hydration */
   useEffect(() => {
     setAuthed(localStorage.getItem(AUTH_KEY) === "1");
-    try {
-      const saved = localStorage.getItem("studio_tracks");
-      if (saved) setTracks(JSON.parse(saved));
-    } catch { /* */ }
+    setTracks(loadTracks());
   }, []);
 
-  /* Persist tracks */
+  /* Persist whenever tracks change */
   useEffect(() => {
-    if (typeof window !== "undefined" && authed) {
-      localStorage.setItem("studio_tracks", JSON.stringify(tracks));
-    }
+    if (authed) saveTracks(tracks);
   }, [tracks, authed]);
 
   const ANALYTICS = tracks.map((t) => ({
@@ -389,7 +385,10 @@ export default function StudioPage() {
   };
 
   const deleteTrack = (id: string) => {
-    if (confirm("Delete this track?")) setTracks(tracks.filter((t) => t.id !== id));
+    if (confirm("Delete this track?")) {
+      setTracks(tracks.filter((t) => t.id !== id));
+      deleteAudioBlob(id).catch(() => { /* ignore if not stored */ });
+    }
   };
 
   /* ── Drop processing ── */
@@ -408,8 +407,9 @@ export default function StudioPage() {
         const item = items[i];
         try {
           const { waveform, duration } = await audioDataFromFile(file);
+          const trackId = `t${Date.now()}-${i}`;
           const newTrack: Track = {
-            id:          `t${Date.now()}-${i}`,
+            id:          trackId,
             title:       titleFromFile(file.name),
             mood:        "Desert Mysticism",
             duration,
@@ -421,6 +421,8 @@ export default function StudioPage() {
             licensed:    0,
             waveform,
           };
+          /* Persist the raw audio blob so the catalog player can stream it */
+          await saveAudioBlob(trackId, file);
           setTracks((prev) => [...prev, newTrack]);
           setProcessing((prev) =>
             prev.map((p) => p.id === item.id ? { ...p, status: "done" } : p)
