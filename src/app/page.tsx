@@ -48,6 +48,12 @@ export default function HomePage() {
         </div>
 
         <Link
+          href="/bio"
+          className="px-6 flex items-center border-l border-zinc-200 text-[10px] uppercase tracking-[0.25em] font-semibold text-zinc-400 hover:bg-black hover:text-white transition-colors"
+        >
+          Bio
+        </Link>
+        <Link
           href="/studio"
           className="px-6 flex items-center border-l border-zinc-200 text-[10px] uppercase tracking-[0.25em] font-semibold text-zinc-400 hover:bg-black hover:text-white transition-colors"
         >
@@ -296,6 +302,9 @@ export default function HomePage() {
                   {s === "sync" ? "Visual Sync" : s.charAt(0).toUpperCase() + s.slice(1)}
                 </button>
               ))}
+              <Link href="/bio" className="block text-sm text-zinc-600 hover:text-black transition-colors">
+                Bio
+              </Link>
               <Link href="/studio" className="block text-sm text-zinc-600 hover:text-black transition-colors">
                 Studio
               </Link>
